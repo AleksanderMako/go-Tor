@@ -3,10 +3,9 @@ package handshakeprotocolservice
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"math/big"
+	cryptointerface "onionRouting/go-torClient/services/crypto/crypto-interface"
 	diffiehellmanservice "onionRouting/go-torClient/services/diffie-hellman"
 	"onionRouting/go-torClient/types"
 
@@ -14,13 +13,18 @@ import (
 )
 
 type HandshakeProtocolService struct {
-	dh diffiehellmanservice.DiffiHellmanService
+	dh              diffiehellmanservice.DiffiHellmanService
+	cryptoService   cryptointerface.CryptoService
+	privateVariable *big.Int
+	sharedSecret    []byte
 }
 
-func NewHandshakeProtocol(dfh diffiehellmanservice.DiffiHellmanService) *HandshakeProtocolService {
+func NewHandshakeProtocol(dfh diffiehellmanservice.DiffiHellmanService,
+	cryptoService cryptointerface.CryptoService) *HandshakeProtocolService {
 
 	hp := new(HandshakeProtocolService)
 	hp.dh = dfh
+	hp.cryptoService = cryptoService
 	return hp
 }
 func (this *HandshakeProtocolService) GenerateKeyPair() ([]byte, *rsa.PrivateKey, error) {
@@ -39,7 +43,7 @@ func (this *HandshakeProtocolService) GenerateKeyPair() ([]byte, *rsa.PrivateKey
 	}
 	return pubKeyBytes, privateKey, nil
 }
-func (this *HandshakeProtocolService) StartDiffieHellman() (types.DFHCoefficients, error) {
+func (this *HandshakeProtocolService) StartDiffieHellman(privKey *rsa.PrivateKey) (types.DFHCoefficients, error) {
 
 	g := this.dh.Generate_g()
 	n, err := this.dh.Generate_n()
@@ -50,24 +54,35 @@ func (this *HandshakeProtocolService) StartDiffieHellman() (types.DFHCoefficient
 	if err != nil {
 		return types.DFHCoefficients{}, err
 	}
-	dfhParams := this.generateDFHPublicKey(g, privateVariable, n)
+	this.privateVariable = privateVariable
+	dfhParams, err := this.generateDFHPublicKey(g, privateVariable, n, privKey)
+	if err != nil {
+		return types.DFHCoefficients{}, err
+	}
 	return dfhParams, nil
 }
-func (this *HandshakeProtocolService) generateDFHPublicKey(prime uint64, exponent *big.Int, modulo *big.Int) types.DFHCoefficients {
+func (this *HandshakeProtocolService) generateDFHPublicKey(prime uint64, exponent *big.Int, modulo *big.Int, privKey *rsa.PrivateKey) (types.DFHCoefficients, error) {
 
 	g := new(big.Int).SetUint64(prime)
 	dfhPublicKey := new(big.Int)
 	dfhPublicKey.Exp(g, exponent, modulo)
-	fmt.Println("dfh public key is ", dfhPublicKey)
+	//	fmt.Println("dfh public key is ", dfhPublicKey)
 	dfhPubKeyBytes := dfhPublicKey.Bytes()
-	pubKeyEncoded := base64.StdEncoding.EncodeToString(dfhPubKeyBytes)
-
-	//value := pubKeyEncoded
-
-	dfhParams := types.DFHCoefficients{
-		G:              prime,
-		N:              modulo,
-		PublicVariable: pubKeyEncoded,
+	sig, err := this.cryptoService.Sign(dfhPubKeyBytes, privKey)
+	if err != nil {
+		return types.DFHCoefficients{}, err
 	}
-	return dfhParams
+	dfhParams := types.DFHCoefficients{
+		G: prime,
+		N: modulo,
+		PublicVariable: types.PublicVariable{
+			Signature: sig,
+			Value:     dfhPubKeyBytes,
+		},
+	}
+	return dfhParams, nil
+}
+func (this *HandshakeProtocolService) GenerateSharedSecret(publicVariable *big.Int, modulo *big.Int) {
+
+	this.dh.GenerateSharedSecret(publicVariable, this.privateVariable, modulo)
 }

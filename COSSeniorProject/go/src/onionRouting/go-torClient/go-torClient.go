@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
+	"math/big"
+	cryptoservice "onionRouting/go-torClient/services/crypto/crypto-service"
 	diffiehellmanservice "onionRouting/go-torClient/services/diffie-hellman"
 	handshakeprotocolservice "onionRouting/go-torClient/services/handshake"
 	"onionRouting/go-torClient/services/request"
@@ -19,14 +18,15 @@ type CustomHandler struct{}
 func main() {
 
 	// generate key pair
+	cryService := cryptoservice.NewCryptoService()
+
 	dfhService := diffiehellmanservice.NewDiffieHellmanService()
-	hp := handshakeprotocolservice.NewHandshakeProtocol(*dfhService)
-	pkBytes, _, err := hp.GenerateKeyPair()
+	hp := handshakeprotocolservice.NewHandshakeProtocol(*dfhService, cryService)
+	pkBytes, privateKey, err := hp.GenerateKeyPair()
 	if err != nil {
 		fmt.Println("error generating key pair ", err)
 		os.Exit(1)
 	}
-
 	keyExchangeReq := types.Request{
 		Action: "keyExchange",
 		Data:   pkBytes,
@@ -43,49 +43,42 @@ func main() {
 	err = json.Unmarshal(serverPublicKeyBytes, &serverPublicKey)
 	HandleErr(err, "failed to unmarshal servers public key ")
 
-	// generate diffie hellman koefs
-	dfhKoefficients, err := hp.StartDiffieHellman()
+	//fmt.Println("umarshaled payload ", serverPublicKey.PubKey)
+
+	//generate diffie hellman koefs
+	dfhKoefficients, err := hp.StartDiffieHellman(privateKey)
 	HandleErr(err, "error in  starting diffie hellman")
 
 	//serialize handshake payload
 
 	dfhBytes, err := json.Marshal(dfhKoefficients)
 	HandleErr(err, "failed to marshal dfh keofficinets")
-	request := types.Request{
+	req := types.Request{
 		Action: "handleHandshake",
 		Data:   dfhBytes,
 	}
+	newUrl := "http://127.0.0.1:9000/handshake"
+	res, err = request.Dial(newUrl, req)
+	HandleErr(err, "failed to dial dfh endpoint")
 
-	// TODO fix peer's expected request payload
-	requestBytes, err := json.Marshal(request)
-	if err != nil {
-		fmt.Println("error marshalling request payload ", err)
-		os.Exit(1)
-	}
+	peerPublicVariable := types.PublicVariable{}
+	peerPublicVariableBytes, err := request.ParseResponse(res)
 
-	var buff bytes.Buffer
-	buff.Write(requestBytes)
+	err = json.Unmarshal(peerPublicVariableBytes, &peerPublicVariable)
+	HandleErr(err, "failed to unmarshal peer's public variable")
 
-	resp, err := http.Post("http://127.0.0.1:9000/handshake", "application/json", &buff)
-	if err != nil {
-		fmt.Println("err making the request ", err)
+	pPublicVar := new(big.Int)
+	pPublicVar.SetBytes(peerPublicVariable.Value)
+	// cPublicVar := new(big.Int)
+	// cPublicVar.SetBytes(dfhKoefficients.PublicVariable.Value)
+	// if pPublicVar == cPublicVar {
+	// 	fmt.Println("its the same")
+	// }
+	println()
+	println()
+	//	fmt.Println("peer's dfh public variable is ", pPublicVar)
 
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-
-	peerPubKey := types.PubKey{}
-
-	err = json.Unmarshal(body, &peerPubKey)
-	if err != nil {
-		fmt.Println("error unmarshaling peer's pub key ")
-		os.Exit(1)
-	}
-	fmt.Println("umarshaled payload ", peerPubKey.PubKey)
-	//json.Unmarshal(body)
-
+	hp.GenerateSharedSecret(pPublicVar, dfhKoefficients.N)
 }
 func HandleErr(err error, customErrMessage string) {
 	if err != nil {

@@ -1,7 +1,10 @@
 package diffiehellmanservice
 
 import (
+	"crypto"
 	"crypto/rand"
+	"encoding/base64"
+	"fmt"
 	"math/big"
 
 	"github.com/kavehmz/prime"
@@ -42,4 +45,19 @@ func (this *DiffiHellmanService) Genrate_Private_Variable() (*big.Int, error) {
 		return nil, errors.Wrap(err, "failed to generate private variable in diffie hellman service")
 	}
 	return privateVariable, nil
+}
+func (this *DiffiHellmanService) GenerateSharedSecret(publicVariable *big.Int, privateVariable *big.Int, modulo *big.Int) {
+
+	shareSecret := new(big.Int)
+	shareSecret.Exp(publicVariable, privateVariable, modulo)
+
+	algorithm := crypto.SHA256
+	newHash := algorithm.New()
+	newHash.Write(shareSecret.Bytes())
+	hashed := newHash.Sum(nil)
+
+	//	this.sharedSecret = hashed
+	encoded := base64.StdEncoding.EncodeToString(hashed)
+
+	fmt.Println("shared secret is :", encoded)
 }

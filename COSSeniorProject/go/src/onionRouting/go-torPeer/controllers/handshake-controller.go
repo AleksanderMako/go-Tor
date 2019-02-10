@@ -5,6 +5,10 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"math/big"
+	cryptoserviceinterface "onionRouting/go-torPeer/services/crypto/crypto-service-interface"
+	dfhservice "onionRouting/go-torPeer/services/diffie-hellman"
 	"onionRouting/go-torPeer/types"
 
 	"github.com/pkg/errors"
@@ -16,53 +20,75 @@ type HandShakeController interface {
 }
 
 type TorHandshakeController struct {
+	cryptoService  cryptoserviceinterface.CryptoService
+	dfh            dfhservice.DFHService
+	peerPrivateKey *rsa.PrivateKey
 }
 
-func NewTorHandshakeController() HandShakeController {
+func NewTorHandshakeController(cryptoService cryptoserviceinterface.CryptoService,
+	dfh dfhservice.DFHService) HandShakeController {
 
-	return &TorHandshakeController{}
+	return &TorHandshakeController{
+		cryptoService: cryptoService,
+		dfh:           dfh,
+	}
 }
 func (this *TorHandshakeController) HandleHandshake(data []byte) ([]byte, error) {
 
 	if data == nil {
 		return nil, errors.New("Handshake controller got empty payload")
 	}
-	clientsPayload := types.HandshakePayload{}
+	clientsPayload := types.DFHCoefficients{}
 	err := json.Unmarshal(data, &clientsPayload)
 	if err != nil {
-		fmt.Println("failed to unmarshal clients pub key ", err)
+		fmt.Println("failed to unmarshal client's payload in Handshake Controller", err)
 		return nil, errors.Wrap(err, "failed to unmarshal client's payload in Handshake Controller")
 	}
-	clientsPublicKey := types.PubKey{}
 
-	err = json.Unmarshal(clientsPayload.PublicKey, &clientsPublicKey)
+	clientsPubKeyBytes, err := ioutil.ReadFile("clientpubKey.txt")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal client's public key in Handshake Controller")
+		return nil, errors.Wrap(err, "failed to read client's pub key from file")
 	}
-	fmt.Println("clients pub key is   ", clientsPublicKey)
-	fmt.Println("clients public g is   ", clientsPayload.DFH.G)
-	fmt.Println("clients public  n   ", clientsPayload.DFH.N)
-	fmt.Println("clients public variable is    ", clientsPayload.DFH.PublicVariable)
-
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	clientsPubKey := types.PubKey{}
+	err = json.Unmarshal(clientsPubKeyBytes, &clientsPubKey)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate key pair in handshake controller ")
+		return nil, errors.Wrap(err, "failed to unmarshal the clients's public key")
 	}
-	publicKey := &privateKey.PublicKey
 
-	myKey := types.PubKey{
-		PubKey: *publicKey,
-	}
-	keyBytes, err := json.Marshal(myKey)
+	err = this.cryptoService.Verify(clientsPayload.PublicVariable.Value, clientsPayload.PublicVariable.Signature, clientsPubKey)
 	if err != nil {
-		return nil, errors.Wrap(err, " failed to marshal peer's public key in handshake controller")
-
+		return nil, errors.Wrap(err, "failed to verify signature during handshake ")
 	}
-	return keyBytes, nil
+	// generate initial private part of the key
+	privateVariable, err := this.dfh.Genrate_Private_Variable()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate peer's private variable")
+	}
+
+	// generate  shared secret by using clients public var and private variable
+	clientsPublicVariable := new(big.Int)
+	clientsPublicVariable.SetBytes(clientsPayload.PublicVariable.Value)
+	this.dfh.GenerateSharedSecret(clientsPublicVariable, privateVariable, clientsPayload.N)
+
+	// generate public variable for client
+	publicVariable, err := this.dfh.GeneratePublicVariable(clientsPayload.G, privateVariable, clientsPayload.N, this.peerPrivateKey)
+
+	publicVariableBytes, err := json.Marshal(publicVariable)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal peer's public variable")
+	}
+	return publicVariableBytes, nil
 }
 
 func (this *TorHandshakeController) HandleKeyExchange(data []byte) ([]byte, error) {
 
+	if data == nil {
+		return nil, errors.New("empty public key payload")
+	}
+	e := ioutil.WriteFile("clientpubKey.txt", data, 777)
+	if e != nil {
+		return nil, errors.Wrap(e, "failed to write client's pub key in file")
+	}
 	clientsPublicKey := types.PubKey{}
 
 	err := json.Unmarshal(data, &clientsPublicKey)
@@ -70,10 +96,12 @@ func (this *TorHandshakeController) HandleKeyExchange(data []byte) ([]byte, erro
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal clinet's pub key ")
 	}
+	//	fmt.Println("client's public key :", clientsPublicKey.PubKey)
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate key pair in handshake controller ")
 	}
+	this.peerPrivateKey = privateKey
 	publicKey := &privateKey.PublicKey
 
 	myKey := types.PubKey{

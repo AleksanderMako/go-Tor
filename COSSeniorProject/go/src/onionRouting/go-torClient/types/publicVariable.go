@@ -1,6 +1,6 @@
 package types
 
 type PublicVariable struct {
-	Value     string `json:"value"`
-	Signature string `json:"signature"`
+	Value     []byte `json:"value"`
+	Signature []byte `json:"signature"`
 }
