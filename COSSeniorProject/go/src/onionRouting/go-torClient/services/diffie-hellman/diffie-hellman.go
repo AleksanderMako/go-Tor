@@ -37,7 +37,6 @@ func (this *DiffiHellmanService) Generate_g() uint64 {
 	prime_g := p[index]
 	return prime_g
 }
-
 func (this *DiffiHellmanService) Genrate_Private_Variable() (*big.Int, error) {
 
 	privateVariable, err := rand.Int(rand.Reader, new(big.Int).SetUint64(2000))
