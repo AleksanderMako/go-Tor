@@ -1,0 +1,25 @@
+version: '3'
+networks:
+  registry:
+    driver: bridge
+services: 
+  registry:
+      container_name: torRegistry
+      build: .
+      ports: 
+        -  4500:4500
+      command: bash -c "sleep 3 && npm run test "
+      depends_on:
+         - redis-persistance
+      networks: 
+        - registry
+  
+  redis-persistance:
+       container_name: redisServer
+       image: 'redis:latest'
+       environment:
+         - ALLOW_EMPTY_PASSWORD=yes
+       ports:
+         - "6379:6379"
+       networks: 
+        - registry

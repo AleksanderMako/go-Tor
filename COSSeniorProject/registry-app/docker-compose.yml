@@ -1,0 +1,14 @@
+version: '3'
+services: 
+  registry:
+      build: .
+      ports: 
+        -  4500:4500
+      command: bash -c "npm start"
+  
+  redis-persistance:
+       image: 'bitnami/redis:latest'
+       environment:
+         - ALLOW_EMPTY_PASSWORD=yes
+       ports:
+         - "6379:6379"
