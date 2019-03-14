@@ -1,4 +1,4 @@
 pkg/
 .exe
 
-./COSSeniorProject/registry-app/node_modules
+node_modules
