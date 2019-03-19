@@ -18,7 +18,7 @@ function put (redisClient,data) {
     }
     redisClient.set("testKey", JSON.stringify(dataObject));
   
-    redisClient.quit();
+   // redisClient.quit();
 }
 
 function get(redisClient,key) {
@@ -29,8 +29,9 @@ function get(redisClient,key) {
 
             if (err != null) {
 
-                const redisErr = new Err(true, err)
-                reject (redisErr);
+            //    const redisErr = new Err(true, err)
+            console.log("Redis service err :", err);
+                reject (err);
             }
             const dataObject = JSON.parse(data);
              resolve(dataObject.redisData);

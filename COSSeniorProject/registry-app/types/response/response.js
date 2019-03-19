@@ -1,16 +1,14 @@
 "use strict";
 
-module.exports = class Response {
+function getOpStatus(opSts, hassErr, message) {
 
-    constructor() {
-
+    var response = {
+        operationStatut:opSts,
+        hassErr:hassErr,
+        message:message,
     }
-
-    getOpStatus (opSts, hassErr, message ) {
-        return new Response={
-            operationStatus: opSts,
-            hassErr : hassErr,
-            message: message,
-        }
-    }
+    return response;
+}
+module.exports = {
+    getOpStatus
 }

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "nodejs ./bin/www",
-    "test": "mocha  test/**"
+    "test": "mocha  test/**  --timeout 50000 && echo $?"
   },
   "dependencies": {
     "body-parser": "~1.0.0",
@@ -16,6 +16,7 @@
     "mocha": "^6.0.2",
     "morgan": "~1.0.0",
     "redis": "^2.8.0",
-    "static-favicon": "~1.0.0"
+    "static-favicon": "~1.0.0",
+    "supertest": "^4.0.0"
   }
 }
