@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+
 	badgerDB := storage.NewStorage()
 	cryptoService := cryptoservice.NewCryptoService(badgerDB)
 	dfh := dfhservice.NewDfhService(cryptoService, badgerDB)
@@ -19,17 +20,24 @@ func main() {
 	multiplexer := NewMultiplexer(handShakeController)
 
 	port := os.Getenv("PEER_PORT")
-	_ = http.Server{
+	server := http.Server{
 		Addr: "127.0.0.1:" + port,
 	}
 	fmt.Println("Peer started listening on port " + port)
-	os.Setenv("PEER_ADD", "127.0.0.1:"+port)
-
+	startUp(port)
+	http.HandleFunc("/", multiplexer.MultiplexRequest)
+	server.ListenAndServe()
+}
+func startUp(port string) {
 	err := clientcapabilities.RegisterPeer()
 	if err != nil {
 		fmt.Println("error during peer registration" + err.Error())
 		os.Exit(1)
 	}
-	http.HandleFunc("/", multiplexer.MultiplexRequest)
-	//	server.ListenAndServe()
+	err = clientcapabilities.GetPeerAddresses("http://registry:4500/peer/peers")
+	if err != nil {
+		fmt.Println("error while getting peer addresses", err.Error())
+		os.Exit(1)
+	}
+
 }
