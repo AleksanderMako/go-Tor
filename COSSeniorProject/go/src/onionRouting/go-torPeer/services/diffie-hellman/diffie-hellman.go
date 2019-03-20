@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	cryptoserviceinterface "onionRouting/go-torPeer/services/crypto/crypto-service-interface"
+	storageserviceinterface "onionRouting/go-torPeer/services/storage/storage-interface"
 	"onionRouting/go-torPeer/types"
 
 	"github.com/pkg/errors"
@@ -17,12 +18,14 @@ type DFHService struct {
 	cs              cryptoserviceinterface.CryptoService
 	privateVariable *big.Int
 	sharedSecret    []byte
+	storageService  storageserviceinterface.StorageService
 }
 
-func NewDfhService(cs cryptoserviceinterface.CryptoService) *DFHService {
+func NewDfhService(cs cryptoserviceinterface.CryptoService, storageService storageserviceinterface.StorageService) *DFHService {
 
 	dfhService := new(DFHService)
 	dfhService.cs = cs
+	dfhService.storageService = storageService
 	return dfhService
 }
 
@@ -53,18 +56,23 @@ func (this *DFHService) GeneratePublicVariable(prime uint64, exponent *big.Int, 
 	return peerDfhPublicKey, nil
 }
 
-func (this *DFHService) GenerateSharedSecret(publicVariable *big.Int, privateVariable *big.Int, modulo *big.Int) {
+func (this *DFHService) GenerateSharedSecret(publicVariable *big.Int, privateVariable *big.Int, modulo *big.Int) error {
 
 	shareSecret := new(big.Int)
 	shareSecret.Exp(publicVariable, privateVariable, modulo)
+	encoded := base64.StdEncoding.EncodeToString(shareSecret.Bytes())
 
 	algorithm := crypto.SHA256
 	newHash := algorithm.New()
-	newHash.Write(shareSecret.Bytes())
+	newHash.Write([]byte(encoded))
 	hashed := newHash.Sum(nil)
 
 	this.sharedSecret = hashed
-	encoded := base64.StdEncoding.EncodeToString(hashed)
 
-	fmt.Println("shared secret is :", encoded)
+	err := this.storageService.Put("clientSecret", this.sharedSecret)
+	if err != nil {
+		return errors.Wrap(err, "failed to persist share secret in storage")
+	}
+	fmt.Println("shared secret is :", this.sharedSecret)
+	return nil
 }

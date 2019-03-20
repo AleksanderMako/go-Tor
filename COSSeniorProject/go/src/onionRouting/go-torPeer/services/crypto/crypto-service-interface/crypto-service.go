@@ -10,4 +10,5 @@ type CryptoService interface {
 	Verify(data []byte, signature []byte, publicKey types.PubKey) error
 	Encrypt(data []byte, key string) ([]byte, error)
 	Decrypt(data []byte, key string) ([]byte, error)
+	GetEncryptionKey(key string) ([]byte, error)
 }

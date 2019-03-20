@@ -7,16 +7,20 @@ import (
 	"fmt"
 	"math/big"
 
+	storage "onionRouting/go-torClient/services/storage/storage-interface"
+
 	"github.com/kavehmz/prime"
 	"github.com/pkg/errors"
 )
 
 type DiffiHellmanService struct {
+	storageService storage.StorageService
 }
 
-func NewDiffieHellmanService() *DiffiHellmanService {
+func NewDiffieHellmanService(storageService storage.StorageService) *DiffiHellmanService {
 
 	dfh := new(DiffiHellmanService)
+	dfh.storageService = storageService
 	return dfh
 }
 func (this *DiffiHellmanService) Generate_n() (*big.Int, error) {
@@ -49,14 +53,14 @@ func (this *DiffiHellmanService) GenerateSharedSecret(publicVariable *big.Int, p
 
 	shareSecret := new(big.Int)
 	shareSecret.Exp(publicVariable, privateVariable, modulo)
+	encoded := base64.StdEncoding.EncodeToString(shareSecret.Bytes())
 
 	algorithm := crypto.SHA256
 	newHash := algorithm.New()
-	newHash.Write(shareSecret.Bytes())
+	newHash.Write([]byte(encoded))
 	hashed := newHash.Sum(nil)
 
-	//	this.sharedSecret = hashed
-	encoded := base64.StdEncoding.EncodeToString(hashed)
+	this.storageService.Put("testPeer", hashed)
 
-	fmt.Println("shared secret is :", encoded)
+	fmt.Println("shared secret is :", string(hashed))
 }

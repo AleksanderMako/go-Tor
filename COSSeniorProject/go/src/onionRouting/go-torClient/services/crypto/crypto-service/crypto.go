@@ -2,20 +2,26 @@ package cryptoservice
 
 import (
 	"crypto"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
+	"io"
 	cryptointerface "onionRouting/go-torClient/services/crypto/crypto-interface"
+	storageserviceinterface "onionRouting/go-torClient/services/storage/storage-interface"
 	"onionRouting/go-torClient/types"
 
 	"github.com/pkg/errors"
 )
 
 type CryptoService struct {
+	storageService storageserviceinterface.StorageService
 }
 
-func NewCryptoService() cryptointerface.CryptoService {
+func NewCryptoService(storageService storageserviceinterface.StorageService) cryptointerface.CryptoService {
 
 	cryptoService := new(CryptoService)
+	cryptoService.storageService = storageService
 	return cryptoService
 }
 
@@ -49,4 +55,48 @@ func (this *CryptoService) Verify(data []byte, signature []byte, publicKey types
 		return errors.Wrap(err, "failed to verify signature")
 	}
 	return nil
+}
+func (this *CryptoService) Encrypt(data []byte, key string) ([]byte, error) {
+
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate aes cypher in crypto service")
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate gcm in crypto service ")
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	io.ReadFull(rand.Reader, nonce)
+	cypherText := gcm.Seal(nil, nonce, data, nil)
+	return cypherText, nil
+}
+func (this *CryptoService) Decrypt(data []byte, key string) ([]byte, error) {
+
+	//secret is b64 first and the sha256 hashed
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate aes cypher in crypto service")
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate gcm in crypto service ")
+	}
+	nonceSize := gcm.NonceSize()
+
+	nonce, cipherText := data[:nonceSize], data[nonceSize:]
+	plainText, err := gcm.Open(nil, nonce, cipherText, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decrypt data ")
+	}
+	return plainText, nil
+
+}
+func (this *CryptoService) GetEncryptionKey(key string) ([]byte, error) {
+
+	data, err := this.storageService.Get(key)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get encryption key in crypto service of clinet ")
+	}
+	return data, nil
 }

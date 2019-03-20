@@ -8,6 +8,7 @@ import (
 	diffiehellmanservice "onionRouting/go-torClient/services/diffie-hellman"
 	handshakeprotocolservice "onionRouting/go-torClient/services/handshake"
 	"onionRouting/go-torClient/services/request"
+	storage "onionRouting/go-torClient/services/storage/storage-implementation"
 	"onionRouting/go-torClient/types"
 
 	"os"
@@ -18,9 +19,9 @@ type CustomHandler struct{}
 func main() {
 
 	// generate key pair
-	cryService := cryptoservice.NewCryptoService()
-
-	dfhService := diffiehellmanservice.NewDiffieHellmanService()
+	badgeDB := storage.NewStorage()
+	cryService := cryptoservice.NewCryptoService(badgeDB)
+	dfhService := diffiehellmanservice.NewDiffieHellmanService(badgeDB)
 	hp := handshakeprotocolservice.NewHandshakeProtocol(*dfhService, cryService)
 	pkBytes, privateKey, err := hp.GenerateKeyPair()
 	if err != nil {

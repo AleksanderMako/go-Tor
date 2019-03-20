@@ -8,17 +8,20 @@ import (
 	"crypto/rsa"
 	"io"
 	cryptoserviceinterface "onionRouting/go-torPeer/services/crypto/crypto-service-interface"
+	storageserviceinterface "onionRouting/go-torPeer/services/storage/storage-interface"
 	"onionRouting/go-torPeer/types"
 
 	"github.com/pkg/errors"
 )
 
 type CryptoService struct {
+	storageService storageserviceinterface.StorageService
 }
 
-func NewCryptoService() cryptoserviceinterface.CryptoService {
+func NewCryptoService(storageService storageserviceinterface.StorageService) cryptoserviceinterface.CryptoService {
 
 	cryptoService := new(CryptoService)
+	cryptoService.storageService = storageService
 	return cryptoService
 }
 
@@ -89,4 +92,12 @@ func (this *CryptoService) Decrypt(data []byte, key string) ([]byte, error) {
 	}
 	return plainText, nil
 
+}
+func (this *CryptoService) GetEncryptionKey(key string) ([]byte, error) {
+
+	data, err := this.storageService.Get(key)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get encryption key in crypto service of peer ")
+	}
+	return data, nil
 }
