@@ -68,7 +68,10 @@ func (this *TorHandshakeController) HandleHandshake(data []byte) ([]byte, error)
 	// generate  shared secret by using clients public var and private variable
 	clientsPublicVariable := new(big.Int)
 	clientsPublicVariable.SetBytes(clientsPayload.PublicVariable.Value)
-	this.dfh.GenerateSharedSecret(clientsPublicVariable, privateVariable, clientsPayload.N)
+	err = this.dfh.GenerateSharedSecret(clientsPublicVariable, privateVariable, clientsPayload.N)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate shared secret for peer ")
+	}
 
 	// generate public variable for client
 	publicVariable, err := this.dfh.GeneratePublicVariable(clientsPayload.G, privateVariable, clientsPayload.N, this.peerPrivateKey)

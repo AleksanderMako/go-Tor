@@ -64,7 +64,7 @@ func main() {
 
 	peerPublicVariable := types.PublicVariable{}
 	peerPublicVariableBytes, err := request.ParseResponse(res)
-
+	fmt.Println(string(peerPublicVariableBytes))
 	err = json.Unmarshal(peerPublicVariableBytes, &peerPublicVariable)
 	HandleErr(err, "failed to unmarshal peer's public variable")
 

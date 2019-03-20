@@ -73,6 +73,6 @@ func (this *DFHService) GenerateSharedSecret(publicVariable *big.Int, privateVar
 	if err != nil {
 		return errors.Wrap(err, "failed to persist share secret in storage")
 	}
-	fmt.Println("shared secret is :", this.sharedSecret)
+	fmt.Println("shared secret is :", string(this.sharedSecret))
 	return nil
 }

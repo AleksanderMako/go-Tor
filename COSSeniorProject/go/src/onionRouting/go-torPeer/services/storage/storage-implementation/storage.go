@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 	storageserviceinterface "onionRouting/go-torPeer/services/storage/storage-interface"
+	"os"
 
 	"github.com/dgraph-io/badger"
 	"github.com/pkg/errors"
@@ -14,9 +15,9 @@ type Storage struct {
 }
 
 func NewStorage() storageserviceinterface.StorageService {
-
+	pwd, _ := os.Getwd()
 	storageService := new(Storage)
-	storageService.dbPath = "../../../database/tmp"
+	storageService.dbPath = pwd + "/database/tmp"
 	storageService.options = badger.DefaultOptions
 	storageService.options.Dir = storageService.dbPath
 	storageService.options.ValueDir = storageService.dbPath
