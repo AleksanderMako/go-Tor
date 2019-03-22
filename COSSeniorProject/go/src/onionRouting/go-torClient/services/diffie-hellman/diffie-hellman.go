@@ -9,18 +9,21 @@ import (
 
 	storage "onionRouting/go-torClient/services/storage/storage-interface"
 
+	"github.com/dgraph-io/badger"
 	"github.com/kavehmz/prime"
 	"github.com/pkg/errors"
 )
 
 type DiffiHellmanService struct {
 	storageService storage.StorageService
+	dbVolume       *badger.DB
 }
 
-func NewDiffieHellmanService(storageService storage.StorageService) *DiffiHellmanService {
+func NewDiffieHellmanService(storageService storage.StorageService, dbVolume *badger.DB) *DiffiHellmanService {
 
 	dfh := new(DiffiHellmanService)
 	dfh.storageService = storageService
+	dfh.dbVolume = dbVolume
 	return dfh
 }
 func (this *DiffiHellmanService) Generate_n() (*big.Int, error) {
@@ -60,7 +63,7 @@ func (this *DiffiHellmanService) GenerateSharedSecret(publicVariable *big.Int, p
 	newHash.Write([]byte(encoded))
 	hashed := newHash.Sum(nil)
 
-	this.storageService.Put("testPeer", hashed)
+	this.storageService.Put("testPeer", hashed, this.dbVolume)
 
 	fmt.Println("shared secret is :", string(hashed))
 }

@@ -27,6 +27,9 @@ router.get("/:setkey", async (req, res) => {
     }
     const redisClient = redisService.createRedisClient();
     const setItems = await redisService.getSetKeys(redisClient, setKey);
-    return res.json(setItems);
+    const response = {
+        peers: setItems
+    }
+    return res.json(response);
 });
 module.exports = router;
