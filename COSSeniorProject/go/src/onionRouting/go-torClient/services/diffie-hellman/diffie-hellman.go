@@ -52,7 +52,7 @@ func (this *DiffiHellmanService) Genrate_Private_Variable() (*big.Int, error) {
 	}
 	return privateVariable, nil
 }
-func (this *DiffiHellmanService) GenerateSharedSecret(publicVariable *big.Int, privateVariable *big.Int, modulo *big.Int) {
+func (this *DiffiHellmanService) GenerateSharedSecret(publicVariable *big.Int, privateVariable *big.Int, modulo *big.Int) []byte {
 
 	shareSecret := new(big.Int)
 	shareSecret.Exp(publicVariable, privateVariable, modulo)
@@ -63,7 +63,9 @@ func (this *DiffiHellmanService) GenerateSharedSecret(publicVariable *big.Int, p
 	newHash.Write([]byte(encoded))
 	hashed := newHash.Sum(nil)
 
-	this.storageService.Put("testPeer", hashed, this.dbVolume)
+	//	this.storageService.Put("testPeer", hashed, this.dbVolume)
 
 	fmt.Println("shared secret is :", string(hashed))
+
+	return hashed
 }

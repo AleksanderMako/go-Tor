@@ -90,7 +90,7 @@ func (this *Storage) Get(key string) ([]byte, error) {
 	})
 
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to execute view transaction from badger")
+		return nil, err
 	}
 	return value, nil
 }

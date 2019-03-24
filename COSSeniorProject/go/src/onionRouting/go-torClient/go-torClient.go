@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
+	circuitrepository "onionRouting/go-torClient/repositories/circuit"
 	cryptoservice "onionRouting/go-torClient/services/crypto/crypto-service"
 	diffiehellmanservice "onionRouting/go-torClient/services/diffie-hellman"
 	handshakeprotocolservice "onionRouting/go-torClient/services/handshake"
-	storage "onionRouting/go-torClient/services/storage/storage-implementation"
-
 	onionprotocol "onionRouting/go-torClient/services/onion"
+	storage "onionRouting/go-torClient/services/storage/storage-implementation"
 	"os"
 )
 
@@ -22,14 +22,13 @@ func main() {
 	// 	fmt.Println("error getting db volume", err.Error())
 	// 	os.Exit(1)
 	// }
-
 	cryService := cryptoservice.NewCryptoService(badgeDB)
 
 	dfhService := diffiehellmanservice.NewDiffieHellmanService(badgeDB, nil)
 
 	hp := handshakeprotocolservice.NewHandshakeProtocol(*dfhService, cryService)
-
-	onionService := onionprotocol.NewOnionService(badgeDB, nil, *hp)
+	circuitRepo := circuitrepository.NewPublicVariableRepository(badgeDB)
+	onionService := onionprotocol.NewOnionService(badgeDB, nil, *hp, circuitRepo)
 	peerList, err := onionService.GetPeers()
 	if err != nil {
 		fmt.Println("error getting peer list  ", err)
@@ -46,6 +45,17 @@ func main() {
 
 	if err = onionService.HandshakeWithPeers(chainID); err != nil {
 		fmt.Println("error: ", err.Error())
+		os.Exit(1)
+	}
+
+	// TODO:extract urls to env vars
+	if err = onionService.GenerateSymetricKeys(chainID); err != nil {
+		fmt.Println("error while exchanging symetric keys with peers " + err.Error())
+		os.Exit(1)
+	}
+	destination := "http://registry:4500/peer/test"
+	if err := onionService.BuildP2PCircuit([]byte(chainID), destination); err != nil {
+		fmt.Println("error while exchanging symetric keys with peers " + err.Error())
 		os.Exit(1)
 	}
 	//cryService := cryptoservice.NewCryptoService(badgeDB)
@@ -75,7 +85,7 @@ func main() {
 	// //fmt.Println("umarshaled payload ", serverPublicKey.PubKey)
 
 	// //generate diffie hellman koefs
-	// dfhKoefficients, err := hp.StartDiffieHellman(privateKey)
+	// dfhKoeficcients, err := hp.StartDiffieHellman(privateKey)
 	// HandleErr(err, "error in  starting diffie hellman")
 
 	// //serialize handshake payload
@@ -109,6 +119,7 @@ func main() {
 
 	//hp.GenerateSharedSecret(pPublicVar, dfhKoefficients.N)
 }
+
 func HandleErr(err error, customErrMessage string) {
 	if err != nil {
 		fmt.Println(customErrMessage, err)

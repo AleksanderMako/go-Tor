@@ -56,7 +56,7 @@ func (this *DFHService) GeneratePublicVariable(prime uint64, exponent *big.Int, 
 	return peerDfhPublicKey, nil
 }
 
-func (this *DFHService) GenerateSharedSecret(publicVariable *big.Int, privateVariable *big.Int, modulo *big.Int) error {
+func (this *DFHService) GenerateSharedSecret(publicVariable *big.Int, privateVariable *big.Int, modulo *big.Int) ([]byte, error) {
 
 	shareSecret := new(big.Int)
 	shareSecret.Exp(publicVariable, privateVariable, modulo)
@@ -69,10 +69,10 @@ func (this *DFHService) GenerateSharedSecret(publicVariable *big.Int, privateVar
 
 	this.sharedSecret = hashed
 
-	err := this.storageService.Put("clientSecret", this.sharedSecret)
-	if err != nil {
-		return errors.Wrap(err, "failed to persist share secret in storage")
-	}
+	// err := this.storageService.Put("clientSecret", this.sharedSecret)
+	// if err != nil {
+	// 	return nil, errors.Wrap(err, "failed to persist share secret in storage")
+	// }
 	fmt.Println("shared secret is :", string(this.sharedSecret))
-	return nil
+	return this.sharedSecret, nil
 }

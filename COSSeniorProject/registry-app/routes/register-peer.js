@@ -32,4 +32,8 @@ router.get("/:setkey", async (req, res) => {
     }
     return res.json(response);
 });
+router.post("/test", (req, res) => {
+
+    console.log(req.body);
+});
 module.exports = router;

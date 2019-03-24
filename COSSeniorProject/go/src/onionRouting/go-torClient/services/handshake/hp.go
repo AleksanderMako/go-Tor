@@ -82,7 +82,11 @@ func (this *HandshakeProtocolService) generateDFHPublicKey(prime uint64, exponen
 	}
 	return dfhParams, nil
 }
-func (this *HandshakeProtocolService) GenerateSharedSecret(publicVariable *big.Int, modulo *big.Int) {
+func (this *HandshakeProtocolService) GenerateSharedSecret(publicVariable *big.Int, modulo *big.Int, signature []byte, publicKey types.PubKey) ([]byte, error) {
 
-	this.dh.GenerateSharedSecret(publicVariable, this.privateVariable, modulo)
+	if err := this.cryptoService.Verify(publicVariable.Bytes(), signature, publicKey); err != nil {
+
+		return nil, errors.Wrap(err, "failed to verify peers public variable  ")
+	}
+	return this.dh.GenerateSharedSecret(publicVariable, this.privateVariable, modulo), nil
 }

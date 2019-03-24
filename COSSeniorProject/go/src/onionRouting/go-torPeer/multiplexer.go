@@ -13,12 +13,15 @@ import (
 
 type Multiplexer struct {
 	handShakeController controller.HandShakeController
+	onionController     controller.OnionController
 }
 
-func NewMultiplexer(handShakeController controller.HandShakeController) Multiplexer {
+func NewMultiplexer(handShakeController controller.HandShakeController,
+	OnionRoutingController controller.OnionController) Multiplexer {
 
 	multiplexer := new(Multiplexer)
 	multiplexer.handShakeController = handShakeController
+	multiplexer.onionController = OnionRoutingController
 	return *multiplexer
 }
 func (this *Multiplexer) setupResponse(w *http.ResponseWriter, req *http.Request) {
@@ -64,7 +67,13 @@ func (this *Multiplexer) MultiplexRequest(w http.ResponseWriter, r *http.Request
 	case "keyExchange":
 		resp, handlerErr = this.handShakeController.HandleKeyExchange(data)
 		w.Write(resp)
+
+	case "buildCircuit":
+		handlerErr = this.onionController.SaveCircuit(data)
+		w.Write([]byte("added circuit link"))
+
 	}
+
 	if handlerErr != nil {
 		http.Error(w, handlerErr.Error(), http.StatusInternalServerError)
 		return

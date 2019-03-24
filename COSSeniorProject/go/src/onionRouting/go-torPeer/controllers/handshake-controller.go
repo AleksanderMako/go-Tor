@@ -5,10 +5,11 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/big"
+	onionrepository "onionRouting/go-torPeer/repositories/onion"
 	cryptoserviceinterface "onionRouting/go-torPeer/services/crypto/crypto-service-interface"
 	dfhservice "onionRouting/go-torPeer/services/diffie-hellman"
+	storageserviceinterface "onionRouting/go-torPeer/services/storage/storage-interface"
 	"onionRouting/go-torPeer/types"
 
 	"github.com/pkg/errors"
@@ -20,17 +21,23 @@ type HandShakeController interface {
 }
 
 type TorHandshakeController struct {
-	cryptoService  cryptoserviceinterface.CryptoService
-	dfh            dfhservice.DFHService
-	peerPrivateKey *rsa.PrivateKey
+	cryptoService   cryptoserviceinterface.CryptoService
+	dfh             dfhservice.DFHService
+	peerPrivateKey  *rsa.PrivateKey
+	storageService  storageserviceinterface.StorageService
+	onionRepository onionrepository.OnionRepository
 }
 
 func NewTorHandshakeController(cryptoService cryptoserviceinterface.CryptoService,
-	dfh dfhservice.DFHService) HandShakeController {
+	dfh dfhservice.DFHService,
+	storageService storageserviceinterface.StorageService,
+	onionRepository onionrepository.OnionRepository) HandShakeController {
 
 	return &TorHandshakeController{
-		cryptoService: cryptoService,
-		dfh:           dfh,
+		cryptoService:   cryptoService,
+		dfh:             dfh,
+		storageService:  storageService,
+		onionRepository: onionRepository,
 	}
 }
 func (this *TorHandshakeController) HandleHandshake(data []byte) ([]byte, error) {
@@ -38,16 +45,22 @@ func (this *TorHandshakeController) HandleHandshake(data []byte) ([]byte, error)
 	if data == nil {
 		return nil, errors.New("Handshake controller got empty payload")
 	}
+	onionPayload := types.OnionPayload{}
+	if err := json.Unmarshal(data, &onionPayload); err != nil {
+
+		return nil, errors.Wrap(err, "failed to unmarshal onion payload ")
+	}
 	clientsPayload := types.DFHCoefficients{}
-	err := json.Unmarshal(data, &clientsPayload)
+	err := json.Unmarshal(onionPayload.Coefficients, &clientsPayload)
+	fmt.Println(onionPayload)
 	if err != nil {
 		fmt.Println("failed to unmarshal client's payload in Handshake Controller", err)
 		return nil, errors.Wrap(err, "failed to unmarshal client's payload in Handshake Controller")
 	}
 
-	clientsPubKeyBytes, err := ioutil.ReadFile("clientpubKey.txt")
+	clientsPubKeyBytes, err := this.storageService.Get("clientpubKey")
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read client's pub key from file")
+		return nil, errors.Wrap(err, "failed to read client's pub key from database")
 	}
 	clientsPubKey := types.PubKey{}
 	err = json.Unmarshal(clientsPubKeyBytes, &clientsPubKey)
@@ -68,13 +81,22 @@ func (this *TorHandshakeController) HandleHandshake(data []byte) ([]byte, error)
 	// generate  shared secret by using clients public var and private variable
 	clientsPublicVariable := new(big.Int)
 	clientsPublicVariable.SetBytes(clientsPayload.PublicVariable.Value)
-	err = this.dfh.GenerateSharedSecret(clientsPublicVariable, privateVariable, clientsPayload.N)
+	sharedSecret, err := this.dfh.GenerateSharedSecret(clientsPublicVariable, privateVariable, clientsPayload.N)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate shared secret for peer ")
 	}
 
+	if err := this.onionRepository.SaveCircuitLink(onionPayload.CircuitID, types.CircuitLinkParameters{
+		SharedSecret: sharedSecret,
+	}); err != nil {
+		return nil, errors.Wrapf(err, "failed to persist shared secret for circuit %v", onionPayload.CircuitID)
+	}
 	// generate public variable for client
 	publicVariable, err := this.dfh.GeneratePublicVariable(clientsPayload.G, privateVariable, clientsPayload.N, this.peerPrivateKey)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, errors.Wrap(err, "failed to generate peers' public variable ")
+	}
 
 	publicVariableBytes, err := json.Marshal(publicVariable)
 	if err != nil {
@@ -88,7 +110,7 @@ func (this *TorHandshakeController) HandleKeyExchange(data []byte) ([]byte, erro
 	if data == nil {
 		return nil, errors.New("empty public key payload")
 	}
-	e := ioutil.WriteFile("clientpubKey.txt", data, 777)
+	e := this.storageService.Put("clientpubKey", data)
 	if e != nil {
 		return nil, errors.Wrap(e, "failed to write client's pub key in file")
 	}
