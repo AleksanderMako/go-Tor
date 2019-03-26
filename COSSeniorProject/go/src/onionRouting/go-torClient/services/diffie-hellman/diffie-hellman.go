@@ -3,7 +3,6 @@ package diffiehellmanservice
 import (
 	"crypto"
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"math/big"
 
@@ -56,15 +55,10 @@ func (this *DiffiHellmanService) GenerateSharedSecret(publicVariable *big.Int, p
 
 	shareSecret := new(big.Int)
 	shareSecret.Exp(publicVariable, privateVariable, modulo)
-	encoded := base64.StdEncoding.EncodeToString(shareSecret.Bytes())
-
 	algorithm := crypto.SHA256
 	newHash := algorithm.New()
-	newHash.Write([]byte(encoded))
+	newHash.Write([]byte(shareSecret.Bytes()))
 	hashed := newHash.Sum(nil)
-
-	//	this.storageService.Put("testPeer", hashed, this.dbVolume)
-
 	fmt.Println("shared secret is :", string(hashed))
 
 	return hashed

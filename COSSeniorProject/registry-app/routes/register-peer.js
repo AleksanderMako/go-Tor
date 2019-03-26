@@ -35,5 +35,6 @@ router.get("/:setkey", async (req, res) => {
 router.post("/test", (req, res) => {
 
     console.log(req.body);
+    return res.send("message received");
 });
 module.exports = router;

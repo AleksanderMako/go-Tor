@@ -4,7 +4,6 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/base64"
 	"fmt"
 	"math/big"
 	cryptoserviceinterface "onionRouting/go-torPeer/services/crypto/crypto-service-interface"
@@ -42,7 +41,6 @@ func (this *DFHService) GeneratePublicVariable(prime uint64, exponent *big.Int, 
 	g := new(big.Int).SetUint64(prime)
 	dfhPublicKey := new(big.Int)
 	dfhPublicKey.Exp(g, exponent, modulo)
-	//fmt.Println("dfh public key is ", dfhPublicKey)
 	dfhPubKeyBytes := dfhPublicKey.Bytes()
 	sig, err := this.cs.Sign(dfhPubKeyBytes, privKey)
 	if err != nil {
@@ -60,19 +58,13 @@ func (this *DFHService) GenerateSharedSecret(publicVariable *big.Int, privateVar
 
 	shareSecret := new(big.Int)
 	shareSecret.Exp(publicVariable, privateVariable, modulo)
-	encoded := base64.StdEncoding.EncodeToString(shareSecret.Bytes())
-
 	algorithm := crypto.SHA256
 	newHash := algorithm.New()
-	newHash.Write([]byte(encoded))
+	newHash.Write([]byte(shareSecret.Bytes()))
 	hashed := newHash.Sum(nil)
 
 	this.sharedSecret = hashed
 
-	// err := this.storageService.Put("clientSecret", this.sharedSecret)
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "failed to persist share secret in storage")
-	// }
 	fmt.Println("shared secret is :", string(this.sharedSecret))
 	return this.sharedSecret, nil
 }

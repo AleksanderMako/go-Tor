@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	circuitrepository "onionRouting/go-torClient/repositories/circuit"
+	peercredentialsrepository "onionRouting/go-torClient/repositories/credentials"
 	cryptoservice "onionRouting/go-torClient/services/crypto/crypto-service"
 	diffiehellmanservice "onionRouting/go-torClient/services/diffie-hellman"
 	handshakeprotocolservice "onionRouting/go-torClient/services/handshake"
@@ -28,7 +29,8 @@ func main() {
 
 	hp := handshakeprotocolservice.NewHandshakeProtocol(*dfhService, cryService)
 	circuitRepo := circuitrepository.NewPublicVariableRepository(badgeDB)
-	onionService := onionprotocol.NewOnionService(badgeDB, nil, *hp, circuitRepo)
+	peerCredentialsRepo := peercredentialsrepository.NewPeerCredentialsRepository(badgeDB)
+	onionService := onionprotocol.NewOnionService(badgeDB, nil, *hp, circuitRepo, peerCredentialsRepo, cryService)
 	peerList, err := onionService.GetPeers()
 	if err != nil {
 		fmt.Println("error getting peer list  ", err)
@@ -53,71 +55,15 @@ func main() {
 		fmt.Println("error while exchanging symetric keys with peers " + err.Error())
 		os.Exit(1)
 	}
-	destination := "http://registry:4500/peer/test"
+	destination := "registry:4500/peer/test"
 	if err := onionService.BuildP2PCircuit([]byte(chainID), destination); err != nil {
-		fmt.Println("error while exchanging symetric keys with peers " + err.Error())
+		fmt.Println("error while building p2p circuit with peers " + err.Error())
 		os.Exit(1)
 	}
-	//cryService := cryptoservice.NewCryptoService(badgeDB)
-	//dfhService := diffiehellmanservice.NewDiffieHellmanService(badgeDB)
-	//hp := handshakeprotocolservice.NewHandshakeProtocol(*dfhService, cryService)
-	// pkBytes, privateKey, err := hp.GenerateKeyPair()
-	// if err != nil {
-	// 	fmt.Println("error generating key pair ", err)
-	// 	os.Exit(1)
-	// }
-	// keyExchangeReq := types.Request{
-	// 	Action: "keyExchange",
-	// 	Data:   pkBytes,
-	// }
-	// url := "http://127.0.0.1:9000/keyExchange"
-
-	// res, err := request.Dial(url, keyExchangeReq)
-	// HandleErr(err, "")
-	// serverPublicKey := types.PubKey{}
-
-	// serverPublicKeyBytes, err := request.ParseResponse(res)
-	// HandleErr(err, "")
-
-	// err = json.Unmarshal(serverPublicKeyBytes, &serverPublicKey)
-	// HandleErr(err, "failed to unmarshal servers public key ")
-
-	// //fmt.Println("umarshaled payload ", serverPublicKey.PubKey)
-
-	// //generate diffie hellman koefs
-	// dfhKoeficcients, err := hp.StartDiffieHellman(privateKey)
-	// HandleErr(err, "error in  starting diffie hellman")
-
-	// //serialize handshake payload
-
-	// dfhBytes, err := json.Marshal(dfhKoefficients)
-	// HandleErr(err, "failed to marshal dfh keofficinets")
-	// req := types.Request{
-	// 	Action: "handleHandshake",
-	// 	Data:   dfhBytes,
-	// }
-	// newUrl := "http://127.0.0.1:9000/handshake"
-	// res, err = request.Dial(newUrl, req)
-	// HandleErr(err, "failed to dial dfh endpoint")
-
-	// peerPublicVariable := types.PublicVariable{}
-	// peerPublicVariableBytes, err := request.ParseResponse(res)
-	// fmt.Println(string(peerPublicVariableBytes))
-	// err = json.Unmarshal(peerPublicVariableBytes, &peerPublicVariable)
-	// HandleErr(err, "failed to unmarshal peer's public variable")
-
-	// pPublicVar := new(big.Int)
-	// pPublicVar.SetBytes(peerPublicVariable.Value)
-	// // cPublicVar := new(big.Int)
-	// // cPublicVar.SetBytes(dfhKoefficients.PublicVariable.Value)
-	// // if pPublicVar == cPublicVar {
-	// // 	fmt.Println("its the same")
-	// // }
-	// println()
-	// println()
-	// //	fmt.Println("peer's dfh public variable is ", pPublicVar)
-
-	//hp.GenerateSharedSecret(pPublicVar, dfhKoefficients.N)
+	if err = onionService.SendMessage([]byte(chainID), "hello server "); err != nil {
+		fmt.Println("error while sending message " + err.Error())
+		os.Exit(1)
+	}
 }
 
 func HandleErr(err error, customErrMessage string) {

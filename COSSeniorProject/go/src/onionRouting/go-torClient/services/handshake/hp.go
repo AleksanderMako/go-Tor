@@ -66,7 +66,6 @@ func (this *HandshakeProtocolService) generateDFHPublicKey(prime uint64, exponen
 	g := new(big.Int).SetUint64(prime)
 	dfhPublicKey := new(big.Int)
 	dfhPublicKey.Exp(g, exponent, modulo)
-	//	fmt.Println("dfh public key is ", dfhPublicKey)
 	dfhPubKeyBytes := dfhPublicKey.Bytes()
 	sig, err := this.cryptoService.Sign(dfhPubKeyBytes, privKey)
 	if err != nil {

@@ -57,9 +57,9 @@ func (this *CryptoService) Verify(data []byte, signature []byte, publicKey types
 	return nil
 }
 
-func (this *CryptoService) Encrypt(data []byte, key string) ([]byte, error) {
+func (this *CryptoService) Encrypt(data []byte, key []byte) ([]byte, error) {
 
-	block, err := aes.NewCipher([]byte(key))
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate aes cypher in crypto service")
 	}
@@ -72,10 +72,8 @@ func (this *CryptoService) Encrypt(data []byte, key string) ([]byte, error) {
 	cypherText := gcm.Seal(nil, nonce, data, nil)
 	return cypherText, nil
 }
-func (this *CryptoService) Decrypt(data []byte, key string) ([]byte, error) {
-
-	//secret is b64 first and the sha256 hashed
-	block, err := aes.NewCipher([]byte(key))
+func (this *CryptoService) Decrypt(data []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate aes cypher in crypto service")
 	}

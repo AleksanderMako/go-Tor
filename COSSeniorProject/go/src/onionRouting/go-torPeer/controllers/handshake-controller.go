@@ -121,7 +121,6 @@ func (this *TorHandshakeController) HandleKeyExchange(data []byte) ([]byte, erro
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal clinet's pub key ")
 	}
-	//	fmt.Println("client's public key :", clientsPublicKey.PubKey)
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate key pair in handshake controller ")

@@ -72,6 +72,10 @@ func (this *Multiplexer) MultiplexRequest(w http.ResponseWriter, r *http.Request
 		handlerErr = this.onionController.SaveCircuit(data)
 		w.Write([]byte("added circuit link"))
 
+	case "relay":
+		handlerErr = this.onionController.RelayMessage(data)
+		w.Write([]byte("message received "))
+
 	}
 
 	if handlerErr != nil {

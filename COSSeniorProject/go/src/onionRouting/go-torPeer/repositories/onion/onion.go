@@ -2,9 +2,11 @@ package onionrepository
 
 import (
 	"encoding/json"
+	"onionRouting/go-torPeer/client-capabilities/request"
 	storageserviceinterface "onionRouting/go-torPeer/services/storage/storage-interface"
 	"onionRouting/go-torPeer/types"
 
+	logger "github.com/apsdehal/go-logger"
 	"github.com/dgraph-io/badger"
 
 	"github.com/pkg/errors"
@@ -53,8 +55,9 @@ func (this *OnionRepository) SaveCircuitLink(cID []byte, link types.CircuitLinkP
 	}
 	return nil
 }
-func (this *OnionRepository) GetCircuitLinkParamaters(cID []byte) (types.CircuitLinkParameters, error) {
+func (this *OnionRepository) GetCircuitLinkParamaters(cID []byte, log *logger.Logger) (types.CircuitLinkParameters, error) {
 
+	log.Debug("GetCircuitLinkParamaters activated")
 	savedLinkBytes, e := this.db.Get(string(cID))
 	if e != nil {
 		return types.CircuitLinkParameters{}, errors.Wrap(e, "failed to get savedLinkBytes from badger")
@@ -63,5 +66,37 @@ func (this *OnionRepository) GetCircuitLinkParamaters(cID []byte) (types.Circuit
 	if e = json.Unmarshal(savedLinkBytes, &savedLink); e != nil {
 		return types.CircuitLinkParameters{}, errors.Wrap(e, "failed to get saved link in onion repository ")
 	}
+	log.Debug("exited all ops ")
 	return savedLink, nil
+}
+func (this *OnionRepository) DialNext(cID []byte, next string, peeledData []byte, log *logger.Logger) error {
+
+	log.Debug("entered dial next ")
+	circuitPayload := types.CircuitPayload{
+		ID:      cID,
+		Payload: peeledData,
+	}
+	circuitPayloadBytes, e := json.Marshal(circuitPayload)
+	if e != nil {
+		return errors.Wrap(e, "failed to marshal circuitPayload during DialNext operation ")
+	}
+	req := types.Request{
+		Action: "relay",
+		Data:   circuitPayloadBytes,
+	}
+	reqBytes, e := json.Marshal(req)
+	if e != nil {
+		return errors.Wrap(e, "failed to marshal reqBytes during DialNext")
+	}
+	resp, e := request.Dial(next, reqBytes)
+	if e != nil {
+		return errors.Wrap(e, "failed to dial next during DialNext operation ")
+	}
+	log.Debugf("peer requests result %v \n", resp)
+	if resp.StatusCode != 200 {
+		return errors.New(resp.Status + "during DialNext where next is " + next)
+	}
+	body, _ := request.ParseResponse(resp)
+	log.Debugf("peer reqeust body %v \n", string(body))
+	return nil
 }

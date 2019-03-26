@@ -10,11 +10,6 @@ import (
 
 func Dial(url string, req []byte) (*http.Response, error) {
 
-	// reqBytes, err := json.Marshal(req)
-	// if err != nil {
-	// 	return nil, errors.Wrap(err, "failed to marshal request ")
-	// }
-
 	var buff bytes.Buffer
 	buff.Write(req)
 

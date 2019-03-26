@@ -21,18 +21,15 @@ func main() {
 	cryptoService := cryptoservice.NewCryptoService(badgerDB)
 	dfh := dfhservice.NewDfhService(cryptoService, badgerDB)
 	handShakeController := controller.NewTorHandshakeController(cryptoService, *dfh, badgerDB, onionRepo)
-	onionService := peeronionprotocol.NewOnionService(onionRepo)
+	onionService := peeronionprotocol.NewOnionService(onionRepo, cryptoService)
 	onionServiceController := controller.NewOnionCOntroller(onionService)
 	multiplexer := NewMultiplexer(handShakeController, onionServiceController)
 
 	port := os.Getenv("PEER_PORT")
-	// server := http.Server{
-	// 	Addr: "127.0.0.1:" + port,
-	// }
+
 	fmt.Println("Peer started listening on port " + port)
 	startUp(port)
 	http.HandleFunc("/", multiplexer.MultiplexRequest)
-	//server.ListenAndServe()
 	httpAddr := flag.String("http", ":"+port, "Listen address")
 
 	http.ListenAndServe(*httpAddr, nil)

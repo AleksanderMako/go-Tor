@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
+	"fmt"
 	"io"
 	cryptointerface "onionRouting/go-torClient/services/crypto/crypto-interface"
 	storageserviceinterface "onionRouting/go-torClient/services/storage/storage-interface"
@@ -56,9 +57,10 @@ func (this *CryptoService) Verify(data []byte, signature []byte, publicKey types
 	}
 	return nil
 }
-func (this *CryptoService) Encrypt(data []byte, key string) ([]byte, error) {
+func (this *CryptoService) Encrypt(data []byte, key []byte) ([]byte, error) {
 
-	block, err := aes.NewCipher([]byte(key))
+	block, err := aes.NewCipher(key)
+	fmt.Println("new cypher started with key : " + string(key) + "\n")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate aes cypher in crypto service")
 	}
@@ -68,13 +70,13 @@ func (this *CryptoService) Encrypt(data []byte, key string) ([]byte, error) {
 	}
 	nonce := make([]byte, gcm.NonceSize())
 	io.ReadFull(rand.Reader, nonce)
-	cypherText := gcm.Seal(nil, nonce, data, nil)
+	cypherText := gcm.Seal(nonce, nonce, data, nil)
 	return cypherText, nil
 }
-func (this *CryptoService) Decrypt(data []byte, key string) ([]byte, error) {
+func (this *CryptoService) Decrypt(data []byte, key []byte) ([]byte, error) {
 
 	//secret is b64 first and the sha256 hashed
-	block, err := aes.NewCipher([]byte(key))
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate aes cypher in crypto service")
 	}

@@ -6,12 +6,20 @@ import (
 	"io/ioutil"
 	"net/http"
 	"onionRouting/go-torClient/types"
+	"time"
 
 	"github.com/pkg/errors"
 )
 
+func NewHttpClient() *http.Client {
+	client := &http.Client{
+		Timeout: time.Second * 120,
+	}
+	return client
+}
 func Dial(url string, req types.Request) (*http.Response, error) {
 
+	c := NewHttpClient()
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal request ")
@@ -20,7 +28,7 @@ func Dial(url string, req types.Request) (*http.Response, error) {
 	var buff bytes.Buffer
 	buff.Write(reqBytes)
 
-	resp, err := http.Post(url, "application/json", &buff)
+	resp, err := c.Post(url, "application/json", &buff)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make request")
 	}
