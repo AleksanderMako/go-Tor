@@ -1,37 +1,20 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	circuitrepository "onionRouting/go-torClient/repositories/circuit"
-	peercredentialsrepository "onionRouting/go-torClient/repositories/credentials"
-	cryptoservice "onionRouting/go-torClient/services/crypto/crypto-service"
-	diffiehellmanservice "onionRouting/go-torClient/services/diffie-hellman"
-	handshakeprotocolservice "onionRouting/go-torClient/services/handshake"
-	onionprotocol "onionRouting/go-torClient/services/onion"
+	onionlib "onionLib/lib/lib-implementation"
 	storage "onionRouting/go-torClient/services/storage/storage-implementation"
 	"os"
 )
 
-type CustomHandler struct{}
-
 func main() {
 
+	//TODO:extract the entire onion protocol into a lib to use in server and client
 	// generate key pair
-	badgeDB := storage.NewStorage()
-	//	databaseVolume, err := badgeDB.GetDBVolume()
-	// if err != nil {
-	// 	fmt.Println("error getting db volume", err.Error())
-	// 	os.Exit(1)
-	// }
-	cryService := cryptoservice.NewCryptoService(badgeDB)
-
-	dfhService := diffiehellmanservice.NewDiffieHellmanService(badgeDB, nil)
-
-	hp := handshakeprotocolservice.NewHandshakeProtocol(*dfhService, cryService)
-	circuitRepo := circuitrepository.NewPublicVariableRepository(badgeDB)
-	peerCredentialsRepo := peercredentialsrepository.NewPeerCredentialsRepository(badgeDB)
-	onionService := onionprotocol.NewOnionService(badgeDB, nil, *hp, circuitRepo, peerCredentialsRepo, cryService)
-	peerList, err := onionService.GetPeers()
+	badgerOptions := storage.InitializeBadger()
+	onionLib := onionlib.NewOnionLib(badgerOptions)
+	peerList, err := onionLib.Onionservice.GetPeers()
 	if err != nil {
 		fmt.Println("error getting peer list  ", err)
 		os.Exit(1)
@@ -39,28 +22,56 @@ func main() {
 	for _, peerID := range peerList {
 		fmt.Println(peerID)
 	}
-	chainID, err := onionService.CreateOnionChain(peerList)
+	// get introduction point
+
+	descriptors, err := onionLib.Onionservice.GetServiceDescriptorsByKeyWords("testing")
+	if err != nil {
+		fmt.Println("error getting peer list  ", err.Error())
+		os.Exit(1)
+	}
+	ip := descriptors.ServiceDescriptors[0].IntroductionPoints[0]
+	destination := "registry:4500/peer/test"
+	peerList = append(peerList, ip)
+	publicKey, privateKey, err := onionLib.Onionservice.CreateCryptoMaterials()
+	if err != nil {
+		fmt.Println("error while CreateCryptoMaterials  ", err.Error())
+		os.Exit(1)
+
+	}
+	privateKeyBytes, err := json.Marshal(privateKey)
+	if err != nil {
+		fmt.Println("error while Marshaling private key in client  ", err.Error())
+		os.Exit(1)
+	}
+	chainID, err := onionLib.Onionservice.CreateOnionChain(peerList, publicKey)
+	// 	chainID, err := onionService.CreateOnionChain(peerList)
 	if err != nil {
 		fmt.Println("error while creating onion ring ", err.Error())
+		os.Exit(1)
 	}
 	fmt.Println(chainID)
 
-	if err = onionService.HandshakeWithPeers(chainID); err != nil {
+	if err = onionLib.Onionservice.HandshakeWithPeers(chainID, publicKey, privateKeyBytes); err != nil {
+		// 	if err = onionService.HandshakeWithPeers(chainID); err != nil {
 		fmt.Println("error: ", err.Error())
 		os.Exit(1)
 	}
-
-	// TODO:extract urls to env vars
-	if err = onionService.GenerateSymetricKeys(chainID); err != nil {
-		fmt.Println("error while exchanging symetric keys with peers " + err.Error())
+	if err = onionLib.Onionservice.GenerateSymetricKeys(chainID); err != nil {
+		// 	// TODO:extract urls to env vars
+		// 	if err = onionService.GenerateSymetricKeys(chainID); err != nil {
+		fmt.Println("error while exchanging symmetric keys with peers " + err.Error())
 		os.Exit(1)
 	}
-	destination := "registry:4500/peer/test"
-	if err := onionService.BuildP2PCircuit([]byte(chainID), destination); err != nil {
+	client := "torclient:8000"
+	//	destination := "registry:4500/peer/test"
+	if err = onionLib.Onionservice.BuildP2PCircuit([]byte(chainID), client, destination); err != nil {
+		// 	if err := onionService.BuildP2PCircuit([]byte(chainID), destination); err != nil {
 		fmt.Println("error while building p2p circuit with peers " + err.Error())
 		os.Exit(1)
 	}
-	if err = onionService.SendMessage([]byte(chainID), "hello server "); err != nil {
+	// 	// message
+	if err = onionLib.Onionservice.SendMessage([]byte(chainID), string(descriptors.ServiceDescriptors[0].ID)); err != nil {
+		// 	if err = onionService.SendMessage([]byte(chainID), "hello server "); err != nil {
 		fmt.Println("error while sending message " + err.Error())
 		os.Exit(1)
 	}

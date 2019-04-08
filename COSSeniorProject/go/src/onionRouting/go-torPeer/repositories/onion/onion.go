@@ -69,7 +69,7 @@ func (this *OnionRepository) GetCircuitLinkParamaters(cID []byte, log *logger.Lo
 	log.Debug("exited all ops ")
 	return savedLink, nil
 }
-func (this *OnionRepository) DialNext(cID []byte, next string, peeledData []byte, log *logger.Logger) error {
+func (this *OnionRepository) DialNext(cID []byte, next string, peeledData []byte, log *logger.Logger, forwardType string) error {
 
 	log.Debug("entered dial next ")
 	circuitPayload := types.CircuitPayload{
@@ -81,7 +81,7 @@ func (this *OnionRepository) DialNext(cID []byte, next string, peeledData []byte
 		return errors.Wrap(e, "failed to marshal circuitPayload during DialNext operation ")
 	}
 	req := types.Request{
-		Action: "relay",
+		Action: forwardType,
 		Data:   circuitPayloadBytes,
 	}
 	reqBytes, e := json.Marshal(req)
@@ -99,4 +99,19 @@ func (this *OnionRepository) DialNext(cID []byte, next string, peeledData []byte
 	body, _ := request.ParseResponse(resp)
 	log.Debugf("peer reqeust body %v \n", string(body))
 	return nil
+}
+func (this *OnionRepository) SaveIntroductionDetails(publicKey []byte, chainID []byte) error {
+
+	if e := this.db.Put(string(publicKey), chainID); e != nil {
+		return errors.Wrap(e, "failed to save introduction point details ")
+	}
+	return nil
+}
+func (this *OnionRepository) GetIntroductionPointDetails(publicKey []byte) ([]byte, error) {
+
+	chainID, e := this.db.Get(string(publicKey))
+	if e != nil {
+		return nil, errors.Wrap(e, "failed to get introduction point details ")
+	}
+	return chainID, nil
 }

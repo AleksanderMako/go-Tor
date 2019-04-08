@@ -26,6 +26,17 @@ func NewStorage() storageserviceinterface.StorageService {
 	return storageService
 }
 
+func InitializeBadger() badger.Options {
+	pwd, _ := os.Getwd()
+	storageService := new(Storage)
+	storageService.dbPath = pwd + "/database/tmp"
+	fmt.Println(storageService.dbPath)
+	storageService.options = badger.DefaultOptions
+	storageService.options.Dir = storageService.dbPath
+	storageService.options.ValueDir = storageService.dbPath
+	return storageService.options
+}
+
 func (this *Storage) GetDBVolume() (*badger.DB, error) {
 	db, err := badger.Open(this.options)
 	if err != nil {

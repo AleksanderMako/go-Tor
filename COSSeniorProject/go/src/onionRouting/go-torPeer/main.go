@@ -30,6 +30,7 @@ func main() {
 	fmt.Println("Peer started listening on port " + port)
 	startUp(port)
 	http.HandleFunc("/", multiplexer.MultiplexRequest)
+	//http.HandleFunc("/contactIP")
 	httpAddr := flag.String("http", ":"+port, "Listen address")
 
 	http.ListenAndServe(*httpAddr, nil)

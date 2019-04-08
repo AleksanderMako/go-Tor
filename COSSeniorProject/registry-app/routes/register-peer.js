@@ -14,7 +14,8 @@ router.post("/", (req, res) => {
     }
     const redisClient = redisService.createRedisClient();
     const setKey = "peers"
-    redisService.putInSet(redisClient, setKey, peerAddress, "");
+    redisService.putInSet(redisClient, setKey, peerAddress, "available");
+    console.log(peerAddress);
     const resp = Response.getOpStatus("success", false, "operation was carried out successfully")
     return res.send(JSON.stringify(resp));
 });
@@ -25,10 +26,11 @@ router.get("/:setkey", async (req, res) => {
     if (!setKey) {
         return res.status(500).send("MISSING SET KEY ")
     }
-    const redisClient = redisService.createRedisClient();
+    let redisClient = redisService.createRedisClient();
     const setItems = await redisService.getSetKeys(redisClient, setKey);
+    let freepeers = await redisService.getFreePeers(setItems)
     const response = {
-        peers: setItems
+        peers: freepeers
     }
     return res.json(response);
 });

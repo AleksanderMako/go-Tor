@@ -91,6 +91,9 @@ func (this *TorHandshakeController) HandleHandshake(data []byte) ([]byte, error)
 	}); err != nil {
 		return nil, errors.Wrapf(err, "failed to persist shared secret for circuit %v", onionPayload.CircuitID)
 	}
+	if err = this.onionRepository.SaveIntroductionDetails(clientsPubKeyBytes, onionPayload.CircuitID); err != nil {
+		return nil, errors.Wrap(err, "failed to save introduction details during handshake ")
+	}
 	// generate public variable for client
 	publicVariable, err := this.dfh.GeneratePublicVariable(clientsPayload.G, privateVariable, clientsPayload.N, this.peerPrivateKey)
 	if err != nil {

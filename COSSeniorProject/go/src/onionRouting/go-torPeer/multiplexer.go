@@ -61,7 +61,6 @@ func (this *Multiplexer) MultiplexRequest(w http.ResponseWriter, r *http.Request
 
 	case "handleHandshake":
 		resp, handlerErr = this.handShakeController.HandleHandshake(data)
-
 		w.Write(resp)
 
 	case "keyExchange":
@@ -75,6 +74,9 @@ func (this *Multiplexer) MultiplexRequest(w http.ResponseWriter, r *http.Request
 	case "relay":
 		handlerErr = this.onionController.RelayMessage(data)
 		w.Write([]byte("message received "))
+	case "backPropagate":
+		handlerErr = this.onionController.BackPropagate(data)
+		w.Write([]byte("successfully back propagated message "))
 
 	}
 

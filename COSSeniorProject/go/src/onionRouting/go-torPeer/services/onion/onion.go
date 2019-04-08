@@ -52,23 +52,63 @@ func (this *PeerOnionService) GetSavedCircuit(cId []byte) (CircuitLinkGetDTO, er
 	}
 	return savedLink, nil
 }
-func (this *PeerOnionService) PeelOnionLayer(CircuitPayload types.CircuitPayload) error {
+func (this *PeerOnionService) PeelOnionLayer(CircuitPayload types.CircuitPayload) ([]byte, string, error) {
 
 	link, err := this.onionRepo.GetCircuitLinkParamaters(CircuitPayload.ID, this.log)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 	peeledData, err := this.cryptoService.Decrypt(CircuitPayload.Payload, link.SharedSecret)
 	if err != nil {
-		return errors.Wrap(err, "failed  to peel encryption leayer")
+		return nil, "", errors.Wrap(err, "failed  to peel encryption leayer")
 	}
 	this.log.Noticef("decrypted layer is %v \n", string(peeledData))
-	next := "http://" + link.Next
-	this.log.Debugf("dialing next %v \n", next)
-	err = this.onionRepo.DialNext(CircuitPayload.ID, next, peeledData, this.log)
-	if err != nil {
-		return err
-	}
-	return nil
+	// if link.Next != "" {
+	// 	next := "http://" + link.Next
+	// 	this.log.Debugf("dialing next %v \n", next)
+	// 	err = this.onionRepo.DialNext(CircuitPayload.ID, next, peeledData, this.log)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
+	return peeledData, link.Next, nil
+
+}
+func (this *PeerOnionService) Forward(data []byte, circuitID []byte, nxt string, forwardType string) (bool, error) {
+
+	if nxt == "" {
+		return false, nil
+	}
+
+	next := "http://" + nxt
+	this.log.Debugf("dialing next %v \n", next)
+	err := this.onionRepo.DialNext(circuitID, next, data, this.log, forwardType)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+func (this *PeerOnionService) BackTrack(publicKey []byte) ([]byte, types.CircuitLinkParameters, error) {
+
+	chainID, err := this.onionRepo.GetIntroductionPointDetails(publicKey)
+	if err != nil {
+		return nil, types.CircuitLinkParameters{}, errors.Wrap(err, "failed to get introduction point during backtrack  ")
+	}
+	link, err := this.onionRepo.GetCircuitLinkParamaters(chainID, this.log)
+	if err != nil {
+		return nil, types.CircuitLinkParameters{}, errors.Wrap(err, "failed to backtrack, could not get link paramaters ")
+	}
+	return chainID, link, nil
+
+}
+func (this *PeerOnionService) AddOnionLayer(data []byte, link types.CircuitLinkParameters) ([]byte, string, error) {
+
+	encrypted, err := this.cryptoService.Encrypt(data, link.SharedSecret)
+	if err != nil {
+		return nil, "", errors.Wrap(err, "failed to encrypt data while adding onion layer ")
+	}
+	this.log.Noticef("decrypted layer is %v \n", string(encrypted))
+
+	return encrypted, link.Previous, nil
 }

@@ -18,7 +18,7 @@ function startClient() {
     docker run -it --name torclient -p 8000:8000 --network=registry-app_registry-net-dev client
 }
 portBase=9000
-for((i=0;i<4;i++)); do
+for((i=0;i<10;i++)); do
     export PEER_PORT=$(($portBase+$i))
     export DNS="peer$i"
     (startPeers)
@@ -26,10 +26,7 @@ for((i=0;i<4;i++)); do
     
 done
 sleep 5s
-(startClient)
+#(startClient)
 
 
-# export PEER_PORT=5500
-
-# (startPeers)
 

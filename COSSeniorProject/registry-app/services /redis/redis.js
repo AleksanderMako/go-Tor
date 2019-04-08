@@ -85,6 +85,44 @@ function getItemInSet(redisClient, setKey, dataKey) {
     })
 }
 
+async function getFreePeers(peerList) {
+
+    const freePeers = await asyncIterator(peerList, async (element) => {
+        let redisClient = createRedisClient();
+        let setItem = await getItemInSet(redisClient, "peers", element);
+        if (setItem.redisData === "available") {
+            return element;
+        }
+        return
+    });
+    return freePeers;
+}
+async function getServiceDescriptor(descriptorList, keyWord) {
+
+    const serviceDescriptors = await asyncIterator(descriptorList, async (descriptor) => {
+        let redisClient = createRedisClient();
+        let setItem = await getItemInSet(redisClient, keyWord, descriptor);
+        const serviceDescriptor = {
+            id: descriptor,
+            ips: setItem.redisData,
+        }
+        return serviceDescriptor;
+    });
+    return serviceDescriptors;
+}
+async function asyncIterator(array, callback) {
+
+    let freePeers = new Array();
+    for (let index = 0; index < array.length; index++) {
+        let freePeer = await callback(array[index], index, array);
+        if (freePeer) {
+            freePeers.push(freePeer);
+
+        }
+    }
+    return freePeers;
+}
+
 async function getSetElements(redisClient, setKey) {
 
     var setItemsArray = new Array();
@@ -104,5 +142,7 @@ module.exports = {
     getItemInSet,
     getSetKeys,
     putInSet,
-    getSetElements
+    getSetElements,
+    getFreePeers,
+    getServiceDescriptor
 }
