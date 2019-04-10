@@ -3,7 +3,7 @@ var router = express.Router();
 var Response = require("../types/response/response");
 var redisService = require("../services /redis/redis");
 
-router.post("/", (req, res) => {
+router.post("/service", (req, res) => {
     // peers register under the peer set 
     const serviceAddress = req.body.id;
     const ips = req.body.ips;
@@ -49,20 +49,21 @@ router.get("/:serviceID", async (req, res) => {
 
 
 });
-router.get("/:keyWord", async (req, res) => {
+router.get("/hiddenservice/:keyWord", async (req, res) => {
 
     const keyWord = req.params.keyWord;
+    console.log(keyWord)
     if (!keyWord) {
         return res.status(500).send("Missing keyWord")
     }
-    // console.log("keyword", keyWord);
-    // let redisClient = redisService.createRedisClient();
-    // const setItems = await redisService.getSetKeys(redisClient, keyWord);
-    // // const servicDescriptors = await redisService.getServiceDescriptor(setItems, keyWord);
-    // const response = {
-    //     serviceDescriptors: setItems,
-    // }
-    return res.json(keyWord);
+    console.log("keyword", keyWord);
+    let redisClient = redisService.createRedisClient();
+    const setItems = await redisService.getSetKeys(redisClient, keyWord);
+    const servicDescriptors = await redisService.getServiceDescriptor(setItems, keyWord);
+    const response = {
+        serviceDescriptors: servicDescriptors,
+    }
+    return res.json(response);
 });
 
 module.exports = router;

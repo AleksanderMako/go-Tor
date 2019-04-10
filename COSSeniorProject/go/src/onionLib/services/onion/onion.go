@@ -2,6 +2,7 @@ package onionprotocol
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"math/big"
 	"math/rand"
@@ -38,13 +39,15 @@ type OnionService struct {
 	log                 *logger.Logger
 	peerCredentialsRepo peercredentialsrepository.PeerCredentials
 	cryptoService       cryptointerface.CryptoService
+	PublicKey           []byte
 }
 
 func NewOnionService(storage storageserviceinterface.StorageService, db *badger.DB,
 	handshakeProtocol handshakeprotocolservice.HandshakeProtocolService,
 	cr circuitrepository.CircuitRepository,
 	CredentialsRepo peercredentialsrepository.PeerCredentials,
-	cryptoService cryptointerface.CryptoService) OnionService {
+	cryptoService cryptointerface.CryptoService,
+	PublicKey []byte) OnionService {
 
 	onionService := new(OnionService)
 	onionService.storage = storage
@@ -54,6 +57,7 @@ func NewOnionService(storage storageserviceinterface.StorageService, db *badger.
 	onionService.peerCredentialsRepo = CredentialsRepo
 	onionService.cryptoService = cryptoService
 	onionService.log, _ = logger.New("OnionService", 1, os.Stdout)
+	onionService.PublicKey = PublicKey
 	return *onionService
 }
 
@@ -79,7 +83,7 @@ func (this *OnionService) GetServiceDescriptorsByKeyWords(keyword string) (types
 	if keyword == "" {
 		return types.ServiceDescriptorsDTO{}, errors.New("illegal empty keyword in GetServiceDescriptorsByKeyWords method  ")
 	}
-	ipURL := "http://registry:4500/hiddenservice/" + keyword
+	ipURL := "http://registry:4500/api/hiddenservice/" + keyword
 	resp, err := http.Get(ipURL)
 	if err != nil {
 		return types.ServiceDescriptorsDTO{}, errors.Wrap(err, "failed to dial given url")
@@ -88,6 +92,7 @@ func (this *OnionService) GetServiceDescriptorsByKeyWords(keyword string) (types
 	if err != nil {
 		return types.ServiceDescriptorsDTO{}, errors.Wrap(err, "failed to read body for given url")
 	}
+	this.log.Debugf("descriptor request body %v", string(body))
 	var descriptors types.ServiceDescriptorsDTO
 	err = json.Unmarshal(body, &descriptors)
 	if err != nil {
@@ -110,6 +115,7 @@ func (this *OnionService) CreateOnionChain(peerList []string, publicKey []byte) 
 	circuit := types.Circuit{}
 
 	ip := peerList[len(peerList)-1]
+	this.log.Debugf("introduction pint is %v", ip)
 	peerList = peerList[:len(peerList)-2]
 
 	for i := 0; i < 2; i++ {
@@ -117,20 +123,16 @@ func (this *OnionService) CreateOnionChain(peerList []string, publicKey []byte) 
 		circuit.PeerList = append(circuit.PeerList, peer)
 		peerList = append(peerList[:u], peerList[u+1:]...)
 	}
-	//timeStamp := time.Now().Format(time.RFC3339)
-	hash, err := this.createHash(publicKey)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to hash public key  ")
-	}
+	encodedPubKey := base64.StdEncoding.EncodeToString(publicKey)
 	circuit.PeerList = append(circuit.PeerList, ip)
-	circuit.CID = hash
-
-	err = this.cr.Save(string(hash), circuit, this.dbVolume)
+	circuit.CID = []byte(encodedPubKey)
+	this.log.Noticef("number of peers in chain is : %v", len(circuit.PeerList))
+	err := this.cr.Save(encodedPubKey, circuit, this.dbVolume)
 	if err != nil {
 		return "", err
 	}
 	//TODO:b64 encode this
-	return string(hash), nil
+	return encodedPubKey, nil
 }
 
 func (this *OnionService) choseRandomPeer(peerList []string) (string, int) {
@@ -139,6 +141,7 @@ func (this *OnionService) choseRandomPeer(peerList []string) (string, int) {
 		return peerList[0], 0
 	}
 	n := rand.Int() % (len(peerList) - 1)
+	this.log.Noticef("chosen index is %v", 1)
 	return peerList[n], n
 }
 
@@ -163,15 +166,6 @@ func (this *OnionService) HandshakeWithPeers(cID string, publicKey []byte, priva
 	if err != nil {
 		return err
 	}
-	// _, privteKey, err := this.handshakeProtocol.GenerateKeyPair()
-	// if err != nil {
-	// 	return errors.Wrap(err, "error generating key pair ")
-	// }
-	// privateKeyBytes, err := json.Marshal(privateKey)
-
-	// if err != nil {
-	// 	return errors.Wrap(err, "failed to marshal private key to bytes during handshake")
-	// }
 	if err := this.storage.Put("client", privateKeyBytes); err != nil {
 		return errors.Wrap(err, "failed to persist clients privateKey")
 	}
@@ -293,13 +287,17 @@ func (this *OnionService) createShareSecret(coefficients types.DFHCoefficients, 
 	pPublicVar := new(big.Int)
 	pPublicVar.SetBytes(peerPublicVariable.Value)
 	peerSignature := peerPublicVariable.Signature
-	peerCredentialsBytes, err := this.storage.Get(peerID)
+	// peerCredentialsBytes, err := this.storage.Get(peerID)
+	// if err != nil {
+	// 	return errors.Wrap(err, "failed to read peers public key")
+	// }
+	// peerCredentials := types.PeerCredentials{}
+	// if err := json.Unmarshal(peerCredentialsBytes, &peerCredentials); err != nil {
+	// 	return errors.Wrap(err, "failed to unmarshal peers credentials from bytes ")
+	// }
+	peerCredentials, err := this.peerCredentialsRepo.GetPeerCredentials(peerID, this.PublicKey)
 	if err != nil {
-		return errors.Wrap(err, "failed to read peers public key")
-	}
-	peerCredentials := types.PeerCredentials{}
-	if err := json.Unmarshal(peerCredentialsBytes, &peerCredentials); err != nil {
-		return errors.Wrap(err, "failed to unmarshal peers credentials from bytes ")
+		return errors.Wrap(err, "failed to read peer credentials ")
 	}
 	peerPublicKey := types.PubKey{}
 	if err := json.Unmarshal(peerCredentials.PublicKey, &peerPublicKey); err != nil {
@@ -419,7 +417,7 @@ func (this *OnionService) onionizeMessage(peerList []string, data string) ([]byt
 
 	for i := len(peerList) - 1; i >= 0; i-- {
 		this.log.Debugf("appliying shared secret of peer %v \n", peerList[i])
-		peerCredentials, err := this.peerCredentialsRepo.GetPeerCredentials(peerList[i])
+		peerCredentials, err := this.peerCredentialsRepo.GetPeerCredentials(peerList[i], []byte(data))
 		if err != nil {
 			return nil, err
 		}
@@ -434,27 +432,28 @@ func (this *OnionService) onionizeMessage(peerList []string, data string) ([]byt
 }
 func (this *OnionService) DeonionizeMessage(publicKey []byte, data []byte) ([]byte, error) {
 
-	hash, err := this.createHash(publicKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to hash public key  ")
-	}
-	circuit, err := this.cr.Get(string(hash))
+	encodedPubKey := base64.StdEncoding.EncodeToString(publicKey)
+	circuit, err := this.cr.Get(encodedPubKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to deonionize message ")
 	}
 	peerList := circuit.PeerList
 	for i := 0; i < len(peerList); i++ {
-		this.log.Debugf("appliying shared secret of peer %v \n", peerList[i])
-		peerCredentials, err := this.peerCredentialsRepo.GetPeerCredentials(peerList[i])
+
+		this.log.Debugf("DeonionizeMessage by applying shared secret of peer %v \n", peerList[i])
+		peerCredentials, err := this.peerCredentialsRepo.GetPeerCredentials(peerList[i], publicKey)
 		if err != nil {
 			return nil, err
 		}
 		key := peerCredentials.SharedSecret
-		dataBytes, err := this.cryptoService.Encrypt([]byte(data), key)
+		this.log.Debugf("DeonionizeMessage encryption key casted to string %v", string(key))
+		this.log.Debugf("DeonionizeMessage encryption key raw bytes  %v", key)
+
+		dataBytes, err := this.cryptoService.Decrypt(data, key)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to encrypt message during onionizeMessage operation")
+			return nil, errors.Wrap(err, "failed to decrypt message during DeonionizeMessage operation")
 		}
 		data = dataBytes
 	}
-	return []byte(data), nil
+	return data, nil
 }

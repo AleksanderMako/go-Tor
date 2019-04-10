@@ -27,12 +27,13 @@ func main() {
 
 	badgerDB := storage.NewStorage()
 	badgerOpts := storage.InitializeBadger()
-	onionLib := onionlib.NewOnionLib(badgerOpts)
-	publicKey, privateKey, err := onionLib.Onionservice.CreateCryptoMaterials()
+	publicKey, privateKey, err := onionlib.CreateCryptoMaterials()
 	if err != nil {
 		fmt.Println("HIDDEN SERVICE ERROR ", err.Error())
 		os.Exit(1)
 	}
+	onionLib := onionlib.NewOnionLib(badgerOpts, publicKey)
+
 	connectionController := hiddenservicecontrollers.NewConnectionController(onionLib)
 	multiPlexer := NewHiddenServiceMultiplexer(connectionController, publicKey, privateKey)
 	client := NewHttpClient()

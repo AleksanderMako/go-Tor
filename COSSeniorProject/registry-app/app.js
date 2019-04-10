@@ -26,7 +26,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', routes);
 app.use('/users', users);
 app.use("/peer", peer);
-app.use("/hiddenservice", serviceDescriptor);
+app.use("/api", serviceDescriptor);
 
 
 /// catch 404 and forwarding to error handler

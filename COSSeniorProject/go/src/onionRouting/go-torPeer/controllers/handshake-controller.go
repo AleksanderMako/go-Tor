@@ -15,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+//TODO: circuit id should be implemented differently not just pub key hashes
 type HandShakeController interface {
 	HandleHandshake(data []byte) ([]byte, error)
 	HandleKeyExchange(data []byte) ([]byte, error)

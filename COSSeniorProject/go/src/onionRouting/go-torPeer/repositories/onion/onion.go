@@ -62,6 +62,9 @@ func (this *OnionRepository) GetCircuitLinkParamaters(cID []byte, log *logger.Lo
 	if e != nil {
 		return types.CircuitLinkParameters{}, errors.Wrap(e, "failed to get savedLinkBytes from badger")
 	}
+	if savedLinkBytes == nil {
+		return types.CircuitLinkParameters{}, errors.New("empty link parameters from GetCircuitLinkParamaters")
+	}
 	savedLink := types.CircuitLinkParameters{}
 	if e = json.Unmarshal(savedLinkBytes, &savedLink); e != nil {
 		return types.CircuitLinkParameters{}, errors.Wrap(e, "failed to get saved link in onion repository ")

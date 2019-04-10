@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	peeronionprotocol "onionRouting/go-torPeer/services/onion"
@@ -48,9 +50,13 @@ func (this *OnionController) RelayMessage(data []byte) error {
 		return err
 	}
 	if !hasNext {
+		fmt.Println("introduction point met !!!!!!! ")
 		// decrypted data should be the bytes of  types.PubKey
 		forwardType := "backPropagate"
-		circuitID, link, err := this.onionService.BackTrack(peeledData)
+
+		fmt.Println("introduction point data " + string(peeledData))
+		encodedPubKey := base64.StdEncoding.EncodeToString(peeledData)
+		_, link, err := this.onionService.BackTrack([]byte(encodedPubKey))
 		if err != nil {
 			return errors.Wrap(err, "failed to backtrack ")
 		}
@@ -58,7 +64,7 @@ func (this *OnionController) RelayMessage(data []byte) error {
 		if err != nil {
 			return err
 		}
-		_, err = this.onionService.Forward(data, circuitID, previous, forwardType)
+		_, err = this.onionService.Forward(data, []byte(encodedPubKey), previous, forwardType)
 		if err != nil {
 			return errors.Wrap(err, "failed to backpropagate ")
 		}
@@ -93,4 +99,13 @@ func (this *OnionController) BackPropagate(data []byte) error {
 	}
 	return nil
 
+}
+func (this *OnionController) createHash(data []byte) ([]byte, error) {
+	hasher := sha256.New()
+	_, err := hasher.Write(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make hash ")
+	}
+	hashedData := hasher.Sum(nil)
+	return hashedData, nil
 }

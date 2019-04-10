@@ -58,7 +58,7 @@ func (this *DiffiHellmanService) GenerateSharedSecret(publicVariable *big.Int, p
 	newHash := algorithm.New()
 	newHash.Write([]byte(shareSecret.Bytes()))
 	hashed := newHash.Sum(nil)
-	fmt.Println("shared secret is :", string(hashed))
+	fmt.Println("hidden service shared secret is :", string(hashed))
 
 	return hashed
 }

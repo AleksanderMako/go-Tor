@@ -38,7 +38,6 @@ func (this *IntroductionService) PublishServiceDescriptor(publicKey []byte, logg
 	if err != nil {
 		return errors.Wrap(err, "failed to get peer addresses during PublishServiceDescriptor operation")
 	}
-
 	logg.Debugf("peers %v", len(pAdd))
 	ips := []string{}
 	//for i := 0; i < 2; i++ {
@@ -62,7 +61,7 @@ func (this *IntroductionService) PublishServiceDescriptor(publicKey []byte, logg
 	}
 	// publish descriptor in api
 	// publish taken peers
-	url := "http://registry:4500/hiddenservice/"
+	url := "http://registry:4500/api/service"
 	logg.Notice("ready to make request for " + url)
 
 	resp, err := this.cs.Dial(url, descriptorBytes)

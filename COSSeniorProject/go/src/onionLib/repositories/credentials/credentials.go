@@ -1,7 +1,9 @@
 package peercredentialsrepository
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	storageserviceinterface "onionLib/services/storage/storage-interface"
 	"onionLib/types"
 
@@ -20,8 +22,14 @@ func NewPeerCredentialsRepository(db storageserviceinterface.StorageService) Pee
 		db: db,
 	}
 }
-func (this *PeerCredentials) GetPeerCredentials(peerID string) (types.PeerCredentials, error) {
+func (this *PeerCredentials) GetPeerCredentials(peerID string, PublicKey []byte) (types.PeerCredentials, error) {
 
+	// hashedKey, err := this.createHash(PublicKey)
+	// if err != nil {
+	// 	return types.PeerCredentials{}, errors.Wrap(err, "fialed to create hash of public key in SavePeerCredentials method ")
+	// }
+	// stateKey := peerID + string(hashedKey)
+	fmt.Println("trying to get peer credentials via state key :" + peerID)
 	credentialBytes, err := this.db.Get(peerID)
 	if err != nil {
 		return types.PeerCredentials{}, errors.Wrap(err, "failed get Peer credentials bytes from the database ")
@@ -34,6 +42,13 @@ func (this *PeerCredentials) GetPeerCredentials(peerID string) (types.PeerCreden
 	return peerCredentials, nil
 }
 func (this *PeerCredentials) SavePeerCredentials(peerID string, credentials types.PeerCredentials) error {
+
+	// hashedKey, err := this.createHash(credentials.PublicKey)
+	// if err != nil {
+	// 	return errors.Wrap(err, "failed to create hash of public key in SavePeerCredentials method ")
+	// }
+	// stateKey := peerID + string(hashedKey)
+	fmt.Println("peer credentials saved under key:" + peerID)
 
 	savedCredentialBytes, err := this.db.Get(peerID)
 	if err != nil && err != badger.ErrKeyNotFound {
@@ -65,4 +80,14 @@ func (this *PeerCredentials) SavePeerCredentials(peerID string, credentials type
 	}
 
 	return nil
+}
+func (this *PeerCredentials) createHash(data []byte) ([]byte, error) {
+
+	hasher := sha256.New()
+	_, err := hasher.Write(data)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to make hash ")
+	}
+	hashedData := hasher.Sum(nil)
+	return hashedData, nil
 }

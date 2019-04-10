@@ -69,7 +69,7 @@ func (this *CryptoService) Encrypt(data []byte, key []byte) ([]byte, error) {
 	}
 	nonce := make([]byte, gcm.NonceSize())
 	io.ReadFull(rand.Reader, nonce)
-	cypherText := gcm.Seal(nil, nonce, data, nil)
+	cypherText := gcm.Seal(nonce, nonce, data, nil)
 	return cypherText, nil
 }
 func (this *CryptoService) Decrypt(data []byte, key []byte) ([]byte, error) {
