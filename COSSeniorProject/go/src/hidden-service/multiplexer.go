@@ -48,11 +48,15 @@ func (this *HiddenServiceMultiplexer) Multiplex(w http.ResponseWriter, r *http.R
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	err = this.connetionController.TestMessage(this.PublicKey, data)
+	response, err := this.connetionController.TestMessage(this.PublicKey, data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	w.Write(response)
+
+}
+func (this *HiddenServiceMultiplexer) HandleTextFileDelivery(w http.ResponseWriter, r *http.Request) {
+
 	w.Write([]byte("successfully contacted hidden service "))
 
 }

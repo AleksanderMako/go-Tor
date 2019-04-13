@@ -67,26 +67,28 @@ func (this *PeerOnionService) PeelOnionLayer(CircuitPayload types.CircuitPayload
 	return peeledData, link.Next, nil
 
 }
-func (this *PeerOnionService) Forward(data []byte, circuitID []byte, nxt string, forwardType string) (bool, error) {
+func (this *PeerOnionService) DecryptData(data []byte, key []byte) ([]byte, error) {
+	decrypted, err := this.cryptoService.Decrypt(data, key)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed during DecryptData")
+	}
+	return decrypted, nil
+}
+func (this *PeerOnionService) Forward(data []byte, circuitID []byte, nxt string, forwardType string, sendingCircuit []byte) (bool, []byte, error) {
 
 	if nxt == "" {
-		return false, nil
+		return false, nil, nil
 	}
-
 	next := "http://" + nxt
 	this.log.Debugf("Forward dialing next %v \n", next)
-	err := this.onionRepo.DialNext(circuitID, next, data, this.log, forwardType)
+	body, err := this.onionRepo.DialNext(circuitID, next, data, this.log, forwardType, sendingCircuit)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
-	return true, nil
+	return true, body, nil
 }
 func (this *PeerOnionService) BackTrack(chainID []byte) ([]byte, types.CircuitLinkParameters, error) {
 
-	// chainID, err := this.onionRepo.GetIntroductionPointDetails(publicKey)
-	// if err != nil {
-	// 	return nil, types.CircuitLinkParameters{}, errors.Wrap(err, "failed to get introduction point during backtrack  ")
-	// }
 	link, err := this.onionRepo.GetCircuitLinkParamaters(chainID, this.log)
 	if err != nil {
 		return nil, types.CircuitLinkParameters{}, errors.Wrap(err, "failed to backtrack, could not get link paramaters ")

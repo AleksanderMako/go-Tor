@@ -61,7 +61,6 @@ func main() {
 		os.Exit(1)
 	}
 	client := "torclient:8000"
-	//	destination := "registry:4500/peer/test"
 	if err = onionLib.Onionservice.BuildP2PCircuit([]byte(chainID), client, destination); err != nil {
 		fmt.Println("error while building p2p circuit with peers " + err.Error())
 		os.Exit(1)

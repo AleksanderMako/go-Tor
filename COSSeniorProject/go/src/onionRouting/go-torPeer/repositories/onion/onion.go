@@ -72,16 +72,17 @@ func (this *OnionRepository) GetCircuitLinkParamaters(cID []byte, log *logger.Lo
 	log.Debug("exited all ops ")
 	return savedLink, nil
 }
-func (this *OnionRepository) DialNext(cID []byte, next string, peeledData []byte, log *logger.Logger, forwardType string) error {
+func (this *OnionRepository) DialNext(cID []byte, next string, peeledData []byte, log *logger.Logger, forwardType string, sendingCircuit []byte) ([]byte, error) {
 
 	log.Debug("entered dial next ")
 	circuitPayload := types.CircuitPayload{
-		ID:      cID,
-		Payload: peeledData,
+		ID:              cID,
+		Payload:         peeledData,
+		SenderPublicKey: sendingCircuit,
 	}
 	circuitPayloadBytes, e := json.Marshal(circuitPayload)
 	if e != nil {
-		return errors.Wrap(e, "failed to marshal circuitPayload during DialNext operation ")
+		return nil, errors.Wrap(e, "failed to marshal circuitPayload during DialNext operation ")
 	}
 	req := types.Request{
 		Action: forwardType,
@@ -89,19 +90,19 @@ func (this *OnionRepository) DialNext(cID []byte, next string, peeledData []byte
 	}
 	reqBytes, e := json.Marshal(req)
 	if e != nil {
-		return errors.Wrap(e, "failed to marshal reqBytes during DialNext")
+		return nil, errors.Wrap(e, "failed to marshal reqBytes during DialNext")
 	}
 	resp, e := request.Dial(next, reqBytes)
 	if e != nil {
-		return errors.Wrap(e, "failed to dial next during DialNext operation ")
+		return nil, errors.Wrap(e, "failed to dial next during DialNext operation ")
 	}
 	log.Debugf("peer requests result %v \n", resp)
 	if resp.StatusCode != 200 {
-		return errors.New(resp.Status + "during DialNext where next is " + next)
+		return nil, errors.New(resp.Status + "during DialNext where next is " + next)
 	}
 	body, _ := request.ParseResponse(resp)
 	log.Debugf("peer reqeust body %v \n", string(body))
-	return nil
+	return body, nil
 }
 func (this *OnionRepository) SaveIntroductionDetails(publicKey []byte, chainID []byte) error {
 

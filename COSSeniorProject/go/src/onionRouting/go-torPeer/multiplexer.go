@@ -57,6 +57,7 @@ func (this *Multiplexer) MultiplexRequest(w http.ResponseWriter, r *http.Request
 	}
 	var handlerErr error
 	var resp []byte
+	var body []byte
 	switch action {
 
 	case "handleHandshake":
@@ -72,11 +73,11 @@ func (this *Multiplexer) MultiplexRequest(w http.ResponseWriter, r *http.Request
 		w.Write([]byte("added circuit link"))
 
 	case "relay":
-		handlerErr = this.onionController.RelayMessage(data)
-		w.Write([]byte("message received "))
+		body, handlerErr = this.onionController.RelayMessage(data)
+		w.Write(body)
 	case "backPropagate":
-		handlerErr = this.onionController.BackPropagate(data)
-		w.Write([]byte("successfully back propagated message "))
+		body, handlerErr = this.onionController.BackPropagate(data)
+		w.Write(body)
 
 	}
 

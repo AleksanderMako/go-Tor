@@ -17,12 +17,6 @@ import (
 	logger "github.com/apsdehal/go-logger"
 )
 
-type TestHandler struct {
-	PublicKey []byte
-
-	PrivateKey types.PrivateKey
-}
-
 func main() {
 
 	badgerDB := storage.NewStorage()

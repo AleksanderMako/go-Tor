@@ -409,7 +409,17 @@ func (this *OnionService) SendMessage(cID []byte, data string) error {
 	this.log.Debugf("hop1 response  %v \n", resp)
 
 	body, _ := request.ParseResponse(resp)
+	hiddenResponse := types.HiddenResponse{}
+	if err = json.Unmarshal(body, &hiddenResponse); err != nil {
+		return errors.Wrap(err, "fialed to unmarshal hidden response ")
+	}
 	this.log.Debugf("hop1 body  %v \n", string(body))
+	decryptedResponse, err := this.DeonionizeMessage(this.PublicKey, hiddenResponse.Data)
+	if err != nil {
+		return errors.Wrap(err, "failed to decrypt hidden service response ")
+	}
+	hiddenResponse.Data = decryptedResponse
+	this.log.Noticef(" response is : %v", string(decryptedResponse))
 
 	return nil
 }
@@ -456,4 +466,16 @@ func (this *OnionService) DeonionizeMessage(publicKey []byte, data []byte) ([]by
 		data = dataBytes
 	}
 	return data, nil
+}
+func (this *OnionService) ApplyOnionLayers(publicKey []byte, data []byte) ([]byte, error) {
+	encodedPubKey := base64.StdEncoding.EncodeToString(publicKey)
+	circuit, err := this.cr.Get(encodedPubKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to deonionize message ")
+	}
+	encryptedData, err := this.onionizeMessage(circuit.PeerList, string(data))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to apply onion layers in ")
+	}
+	return encryptedData, nil
 }
