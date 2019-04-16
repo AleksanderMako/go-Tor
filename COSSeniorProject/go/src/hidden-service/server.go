@@ -4,8 +4,10 @@ import (
 	"flag"
 	"fmt"
 	hiddenservicecontrollers "hidden-service/controllers"
+	messagerepository "hidden-service/repositories/message"
 	servicedescriptorrepository "hidden-service/repositories/service-descriptor"
 	clientservice "hidden-service/services/client"
+	contentservice "hidden-service/services/content"
 	introductionpointservice "hidden-service/services/ip"
 	storage "hidden-service/services/storage/storage-implementation"
 	"hidden-service/types"
@@ -28,7 +30,10 @@ func main() {
 	}
 	onionLib := onionlib.NewOnionLib(badgerOpts, publicKey)
 
-	connectionController := hiddenservicecontrollers.NewConnectionController(onionLib)
+	messageRepo := messagerepository.NewMessageRepository()
+	pwd, _ := os.Getwd()
+	contentService := contentservice.NewContentService(onionLib)
+	connectionController := hiddenservicecontrollers.NewConnectionController(onionLib, messageRepo, contentService, pwd)
 	multiPlexer := NewHiddenServiceMultiplexer(connectionController, publicKey, privateKey)
 	client := NewHttpClient()
 	clientService := clientservice.NewClientService(client)

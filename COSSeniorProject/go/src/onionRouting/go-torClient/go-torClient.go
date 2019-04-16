@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	onionlib "onionLib/lib/lib-implementation"
+	messagerepository "onionRouting/go-torClient/repositories/message"
 	storage "onionRouting/go-torClient/services/storage/storage-implementation"
 	"os"
 )
@@ -13,6 +14,7 @@ func main() {
 	//TODO:extract the entire onion protocol into a lib to use in server and client
 	// generate key pair
 	badgerOptions := storage.InitializeBadger()
+	messageRepo := messagerepository.NewMessageRepository()
 	publicKey, privateKey, err := onionlib.CreateCryptoMaterials()
 	if err != nil {
 		fmt.Println("error while CreateCryptoMaterials  ", err.Error())
@@ -66,7 +68,13 @@ func main() {
 		os.Exit(1)
 	}
 	// 	// message
-	if err = onionLib.Onionservice.SendMessage([]byte(chainID), string(descriptors.ServiceDescriptors[0].ID)); err != nil {
+	messageBytes, err := messageRepo.CreateMessage(descriptors.ServiceDescriptors[0].ID, "txt")
+	if err != nil {
+		fmt.Println("error while building p2p circuit with peers " + err.Error())
+		os.Exit(1)
+	}
+
+	if err = onionLib.Onionservice.SendMessage([]byte(chainID), messageBytes); err != nil {
 		fmt.Println("error while sending message " + err.Error())
 		os.Exit(1)
 	}

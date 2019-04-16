@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	messagerepository "onionRouting/go-torClient/repositories/message"
 	peeronionprotocol "onionRouting/go-torPeer/services/onion"
 	"onionRouting/go-torPeer/types"
 
@@ -13,11 +14,13 @@ import (
 
 type OnionController struct {
 	onionService peeronionprotocol.PeerOnionService
+	messageRepo  messagerepository.MessageRepository
 }
 
-func NewOnionCOntroller(onionService peeronionprotocol.PeerOnionService) OnionController {
+func NewOnionCOntroller(onionService peeronionprotocol.PeerOnionService, messageRepo messagerepository.MessageRepository) OnionController {
 	return OnionController{
 		onionService: onionService,
+		messageRepo:  messageRepo,
 	}
 }
 func (this *OnionController) SaveCircuit(data []byte) error {
@@ -55,8 +58,15 @@ func (this *OnionController) RelayMessage(data []byte) ([]byte, error) {
 		// decrypted data should be the bytes of  types.PubKey
 		forwardType := "backPropagate"
 
-		fmt.Println("introduction point data " + string(peeledData))
-		encodedPubKey := base64.StdEncoding.EncodeToString(peeledData)
+		fmt.Printf("introduction point data %v \n", string(peeledData))
+		message, err := this.messageRepo.GetMessage(peeledData)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get message in introduction point ")
+		}
+
+		encodedPubKey := base64.StdEncoding.EncodeToString(message.Descriptorkey)
+
+		fmt.Printf("chaind id in bakctrack is %v\n ", encodedPubKey)
 		_, link, err := this.onionService.BackTrack([]byte(encodedPubKey))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to backtrack ")
@@ -129,6 +139,7 @@ func (this *OnionController) createHash(data []byte) ([]byte, error) {
 
 func (this *OnionController) HandleIPResponse(response []byte) ([]byte, error) {
 
+	fmt.Printf("HandleIPResponse received resp %v\n", string(response))
 	hiddenResponse := types.HiddenResponse{}
 	if err := json.Unmarshal(response, &hiddenResponse); err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal response in HandleIPResponse")

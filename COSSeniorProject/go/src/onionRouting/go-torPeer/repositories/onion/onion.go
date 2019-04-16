@@ -2,6 +2,7 @@ package onionrepository
 
 import (
 	"encoding/json"
+	"fmt"
 	"onionRouting/go-torPeer/client-capabilities/request"
 	storageserviceinterface "onionRouting/go-torPeer/services/storage/storage-interface"
 	"onionRouting/go-torPeer/types"
@@ -50,6 +51,7 @@ func (this *OnionRepository) SaveCircuitLink(cID []byte, link types.CircuitLinkP
 	if e != nil {
 		return errors.Wrap(e, "failed to marshal newSavedLink")
 	}
+	fmt.Printf("saved link bytes %v\n", string(newSavedLinkBytes))
 	if e = this.db.Put(string(cID), newSavedLinkBytes); e != nil {
 		return errors.Wrap(e, "failed to save link in badger ")
 	}
@@ -57,7 +59,7 @@ func (this *OnionRepository) SaveCircuitLink(cID []byte, link types.CircuitLinkP
 }
 func (this *OnionRepository) GetCircuitLinkParamaters(cID []byte, log *logger.Logger) (types.CircuitLinkParameters, error) {
 
-	log.Debug("GetCircuitLinkParamaters activated")
+	log.Debugf("GetCircuitLinkParamaters activated with key %v", string(cID))
 	savedLinkBytes, e := this.db.Get(string(cID))
 	if e != nil {
 		return types.CircuitLinkParameters{}, errors.Wrap(e, "failed to get savedLinkBytes from badger")
@@ -66,6 +68,7 @@ func (this *OnionRepository) GetCircuitLinkParamaters(cID []byte, log *logger.Lo
 		return types.CircuitLinkParameters{}, errors.New("empty link parameters from GetCircuitLinkParamaters")
 	}
 	savedLink := types.CircuitLinkParameters{}
+	log.Debugf("saved link bytes %v", string(savedLinkBytes))
 	if e = json.Unmarshal(savedLinkBytes, &savedLink); e != nil {
 		return types.CircuitLinkParameters{}, errors.Wrap(e, "failed to get saved link in onion repository ")
 	}

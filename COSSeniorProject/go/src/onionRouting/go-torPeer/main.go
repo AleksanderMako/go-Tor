@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	messagerepository "onionRouting/go-torClient/repositories/message"
 	clientcapabilities "onionRouting/go-torPeer/client-capabilities"
 	controller "onionRouting/go-torPeer/controllers"
 	onionrepository "onionRouting/go-torPeer/repositories/onion"
@@ -22,7 +23,8 @@ func main() {
 	dfh := dfhservice.NewDfhService(cryptoService, badgerDB)
 	handShakeController := controller.NewTorHandshakeController(cryptoService, *dfh, badgerDB, onionRepo)
 	onionService := peeronionprotocol.NewOnionService(onionRepo, cryptoService)
-	onionServiceController := controller.NewOnionCOntroller(onionService)
+	messageRepository := messagerepository.NewMessageRepository()
+	onionServiceController := controller.NewOnionCOntroller(onionService, messageRepository)
 	multiplexer := NewMultiplexer(handShakeController, onionServiceController)
 
 	port := os.Getenv("PEER_PORT")

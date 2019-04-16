@@ -52,11 +52,7 @@ func (this *HiddenServiceMultiplexer) Multiplex(w http.ResponseWriter, r *http.R
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	w.WriteHeader(http.StatusOK)
 	w.Write(response)
-
-}
-func (this *HiddenServiceMultiplexer) HandleTextFileDelivery(w http.ResponseWriter, r *http.Request) {
-
-	w.Write([]byte("successfully contacted hidden service "))
 
 }

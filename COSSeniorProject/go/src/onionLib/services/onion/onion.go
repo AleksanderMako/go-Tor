@@ -377,7 +377,7 @@ func (this *OnionService) sendP2PRequest(cID []byte, hop types.P2PBuildCircuitRe
 }
 
 //TODO: modify datatype later
-func (this *OnionService) SendMessage(cID []byte, data string) error {
+func (this *OnionService) SendMessage(cID []byte, data []byte) error {
 
 	circuit, err := this.cr.Get(string(cID))
 	if err != nil {
@@ -423,7 +423,7 @@ func (this *OnionService) SendMessage(cID []byte, data string) error {
 
 	return nil
 }
-func (this *OnionService) onionizeMessage(peerList []string, data string) ([]byte, error) {
+func (this *OnionService) onionizeMessage(peerList []string, data []byte) ([]byte, error) {
 
 	for i := len(peerList) - 1; i >= 0; i-- {
 		this.log.Debugf("appliying shared secret of peer %v \n", peerList[i])
@@ -432,11 +432,11 @@ func (this *OnionService) onionizeMessage(peerList []string, data string) ([]byt
 			return nil, err
 		}
 		key := peerCredentials.SharedSecret
-		dataBytes, err := this.cryptoService.Encrypt([]byte(data), key)
+		dataBytes, err := this.cryptoService.Encrypt(data, key)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to encrypt message during onionizeMessage operation")
 		}
-		data = string(dataBytes)
+		data = dataBytes
 	}
 	return []byte(data), nil
 }
@@ -473,7 +473,7 @@ func (this *OnionService) ApplyOnionLayers(publicKey []byte, data []byte) ([]byt
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to deonionize message ")
 	}
-	encryptedData, err := this.onionizeMessage(circuit.PeerList, string(data))
+	encryptedData, err := this.onionizeMessage(circuit.PeerList, data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to apply onion layers in ")
 	}

@@ -1,7 +1,6 @@
 package peeronionprotocol
 
 import (
-	"fmt"
 	onionrepository "onionRouting/go-torPeer/repositories/onion"
 	cryptoserviceinterface "onionRouting/go-torPeer/services/crypto/crypto-service-interface"
 	"onionRouting/go-torPeer/types"
@@ -31,7 +30,7 @@ func (this *PeerOnionService) SaveCircuit(circuit types.P2PBuildCircuitRequest) 
 		Next:     circuit.Next,
 		Previous: circuit.Previous,
 	}
-	fmt.Println(linkParamaeters.Next)
+	this.log.Noticef("saved circuit under key %v", string(circuit.ID))
 	if err := this.onionRepo.SaveCircuitLink(circuit.ID, linkParamaeters); err != nil {
 		return err
 	}
