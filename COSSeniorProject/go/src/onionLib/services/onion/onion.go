@@ -377,16 +377,16 @@ func (this *OnionService) sendP2PRequest(cID []byte, hop types.P2PBuildCircuitRe
 }
 
 //TODO: modify datatype later
-func (this *OnionService) SendMessage(cID []byte, data []byte) error {
+func (this *OnionService) SendMessage(cID []byte, data []byte) ([]byte, error) {
 
 	circuit, err := this.cr.Get(string(cID))
 	if err != nil {
-		return errors.Wrap(err, "failed to get circuit in SendMessage ")
+		return nil, errors.Wrap(err, "failed to get circuit in SendMessage ")
 	}
 
 	encrypted, err := this.onionizeMessage(circuit.PeerList, data)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	circuitPayload := types.CircuitPayload{
 		ID:      cID,
@@ -394,7 +394,7 @@ func (this *OnionService) SendMessage(cID []byte, data []byte) error {
 	}
 	payloadBytes, err := json.Marshal(circuitPayload)
 	if err != nil {
-		return errors.Wrap(err, "failed to marshal  payload to bytes")
+		return nil, errors.Wrap(err, "failed to marshal  payload to bytes")
 	}
 	hop1 := "http://" + circuit.PeerList[0]
 	req := types.Request{
@@ -404,24 +404,24 @@ func (this *OnionService) SendMessage(cID []byte, data []byte) error {
 
 	resp, err := request.Dial(hop1, req)
 	if err != nil {
-		return errors.Wrap(err, "failed to dial ")
+		return nil, errors.Wrap(err, "failed to dial ")
 	}
 	this.log.Debugf("hop1 response  %v \n", resp)
 
 	body, _ := request.ParseResponse(resp)
 	hiddenResponse := types.HiddenResponse{}
 	if err = json.Unmarshal(body, &hiddenResponse); err != nil {
-		return errors.Wrap(err, "fialed to unmarshal hidden response ")
+		return nil, errors.Wrap(err, "fialed to unmarshal hidden response ")
 	}
 	this.log.Debugf("hop1 body  %v \n", string(body))
 	decryptedResponse, err := this.DeonionizeMessage(this.PublicKey, hiddenResponse.Data)
 	if err != nil {
-		return errors.Wrap(err, "failed to decrypt hidden service response ")
+		return nil, errors.Wrap(err, "failed to decrypt hidden service response ")
 	}
 	hiddenResponse.Data = decryptedResponse
 	this.log.Noticef(" response is : %v", string(decryptedResponse))
 
-	return nil
+	return decryptedResponse, nil
 }
 func (this *OnionService) onionizeMessage(peerList []string, data []byte) ([]byte, error) {
 
