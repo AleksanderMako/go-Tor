@@ -8,8 +8,15 @@ import (
 	onionlib "onionLib/lib/lib-implementation"
 	messagerepository "onionRouting/go-torClient/repositories/message"
 	storage "onionRouting/go-torClient/services/storage/storage-implementation"
+	"onionRouting/go-torClient/types"
 	"os"
 )
+
+func setupResponse(w *http.ResponseWriter, req *http.Request) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "http://localhost:4200")
+	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+}
 
 func main() {
 
@@ -39,59 +46,13 @@ func main() {
 	}
 
 	torServer := NewTorServer(onionLib, publicKey, privateKeyBytes, messageRepo)
-	torServer.listenHandle()
+	//torServer.listenHandle()
 	httpAddr := flag.String("http", ":"+"8000", "Listen address")
+	http.HandleFunc("/search", torServer.Search)
+	http.HandleFunc("/connect", torServer.ConnectToServer)
+	http.HandleFunc("/file", torServer.RequestTextFile)
 	http.ListenAndServe(*httpAddr, nil)
 
-	// get introduction point
-
-	// descriptors, err := onionLib.Onionservice.GetServiceDescriptorsByKeyWords("testing")
-	// if err != nil {
-	// 	fmt.Println("error getting service descriptor  list  ", err.Error())
-	// 	os.Exit(1)
-	// }
-
-	// ip := descriptors.ServiceDescriptors[0].IntroductionPoints[0]
-	// destination := "registry:4500/peer/test"
-	// peerList = append(peerList, ip)
-
-	// privateKeyBytes, err := json.Marshal(privateKey)
-	// if err != nil {
-	// 	fmt.Println("error while Marshaling private key in client  ", err.Error())
-	// 	os.Exit(1)
-	// }
-	// chainID, err := onionLib.Onionservice.CreateOnionChain(peerList, publicKey)
-	// // 	chainID, err := onionService.CreateOnionChain(peerList)
-	// if err != nil {
-	// 	fmt.Println("error while creating onion ring ", err.Error())
-	// 	os.Exit(1)
-	// }
-	// fmt.Println(chainID)
-
-	// if err = onionLib.Onionservice.HandshakeWithPeers(chainID, publicKey, privateKeyBytes); err != nil {
-	// 	fmt.Println("error: ", err.Error())
-	// 	os.Exit(1)
-	// }
-	// if err = onionLib.Onionservice.GenerateSymetricKeys(chainID); err != nil {
-	// 	fmt.Println("error while exchanging symmetric keys with peers " + err.Error())
-	// 	os.Exit(1)
-	// }
-	// client := "torclient:8000"
-	// if err = onionLib.Onionservice.BuildP2PCircuit([]byte(chainID), client, destination); err != nil {
-	// 	fmt.Println("error while building p2p circuit with peers " + err.Error())
-	// 	os.Exit(1)
-	// }
-
-	// messageBytes, err := messageRepo.CreateMessage(descriptors.ServiceDescriptors[0].ID, "txt")
-	// if err != nil {
-	// 	fmt.Println("error while building p2p circuit with peers " + err.Error())
-	// 	os.Exit(1)
-	// }
-
-	// if err = onionLib.Onionservice.SendMessage([]byte(chainID), messageBytes); err != nil {
-	// 	fmt.Println("error while sending message " + err.Error())
-	// 	os.Exit(1)
-	// }
 }
 
 func HandleErr(err error, customErrMessage string) {
@@ -101,6 +62,7 @@ func HandleErr(err error, customErrMessage string) {
 	}
 	return
 }
+
 func (this *TorServer) Connect(peerList []string, destination string, descriptorID []byte) ([]byte, error) {
 	chainID, err := this.torLib.Onionservice.CreateOnionChain(peerList, this.PublicKey)
 	// 	chainID, err := onionService.CreateOnionChain(peerList)
@@ -134,5 +96,13 @@ func (this *TorServer) Connect(peerList []string, destination string, descriptor
 		fmt.Println("error while sending message " + err.Error())
 		return nil, err
 	}
-	return response, nil
+	c_response := types.ConnectionResponse{
+		Response: string(response),
+	}
+	cResponseBytes, err := json.Marshal(c_response)
+	if err != nil {
+		fmt.Println("failed to marshal connection response  " + err.Error())
+		return nil, err
+	}
+	return cResponseBytes, nil
 }

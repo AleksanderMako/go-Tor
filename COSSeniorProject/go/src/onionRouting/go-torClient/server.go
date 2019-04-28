@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -47,6 +48,7 @@ func NewTorServer(torLib onionlib.OnionLibrary, PublicKey []byte, PrivateKey []b
 
 func (this *TorServer) Search(w http.ResponseWriter, r *http.Request) {
 
+	setupResponse(&w, r)
 	body, err := readBody(r)
 	if err != nil {
 		fmt.Printf("error in reading request for search %v\n", err.Error())
@@ -73,6 +75,7 @@ func (this *TorServer) Search(w http.ResponseWriter, r *http.Request) {
 }
 func (this *TorServer) ConnectToServer(w http.ResponseWriter, r *http.Request) {
 
+	setupResponse(&w, r)
 	body, err := readBody(r)
 	if err != nil {
 		fmt.Printf("error in reading request for search %v\n", err.Error())
@@ -94,7 +97,13 @@ func (this *TorServer) ConnectToServer(w http.ResponseWriter, r *http.Request) {
 	}
 	destination := "registry:4500/peer/test"
 	peerList = append(peerList, ip)
-	hiddenResponse, err := this.Connect(peerList, destination, c.DescriptorID)
+	decodedID, err := base64.StdEncoding.DecodeString(c.DescriptorID)
+	if err != nil {
+		fmt.Printf("error in decoding decriptor %v\n", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	}
+	hiddenResponse, err := this.Connect(peerList, destination, decodedID)
 	if err != nil {
 		err = errors.Wrap(err, "failed to connect to server ")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -104,6 +113,7 @@ func (this *TorServer) ConnectToServer(w http.ResponseWriter, r *http.Request) {
 }
 func (this *TorServer) RequestTextFile(w http.ResponseWriter, r *http.Request) {
 
+	setupResponse(&w, r)
 	body, err := readBody(r)
 	if err != nil {
 		fmt.Printf("error in reading request for search %v\n", err.Error())
@@ -115,7 +125,13 @@ func (this *TorServer) RequestTextFile(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("error in reading request for ConnectToServer %v\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	messageBytes, err := this.messageRepo.CreateMessage(c.DescriptorID, "txt")
+	decodedID, err := base64.StdEncoding.DecodeString(c.DescriptorID)
+	if err != nil {
+		fmt.Printf("error in decoding decriptor %v\n", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+
+	}
+	messageBytes, err := this.messageRepo.CreateMessage(decodedID, "txt")
 	if err != nil {
 		fmt.Println("error while building p2p circuit with peers " + err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -125,6 +141,15 @@ func (this *TorServer) RequestTextFile(w http.ResponseWriter, r *http.Request) {
 		err = errors.Wrap(err, "failed to connect to server ")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	file := types.FileResponse{
+		Data:     string(hiddenResponse),
+		FileType: "txt",
+	}
+	fileBytes, err := json.Marshal(file)
+	if err != nil {
+		fmt.Println("failed to marshal file " + err.Error())
+
+	}
 	w.WriteHeader(http.StatusOK)
-	w.Write(hiddenResponse)
+	w.Write(fileBytes)
 }

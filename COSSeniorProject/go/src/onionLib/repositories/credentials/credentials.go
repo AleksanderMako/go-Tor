@@ -24,11 +24,6 @@ func NewPeerCredentialsRepository(db storageserviceinterface.StorageService) Pee
 }
 func (this *PeerCredentials) GetPeerCredentials(peerID string, PublicKey []byte) (types.PeerCredentials, error) {
 
-	// hashedKey, err := this.createHash(PublicKey)
-	// if err != nil {
-	// 	return types.PeerCredentials{}, errors.Wrap(err, "fialed to create hash of public key in SavePeerCredentials method ")
-	// }
-	// stateKey := peerID + string(hashedKey)
 	fmt.Println("trying to get peer credentials via state key :" + peerID)
 	credentialBytes, err := this.db.Get(peerID)
 	if err != nil {
@@ -43,11 +38,6 @@ func (this *PeerCredentials) GetPeerCredentials(peerID string, PublicKey []byte)
 }
 func (this *PeerCredentials) SavePeerCredentials(peerID string, credentials types.PeerCredentials) error {
 
-	// hashedKey, err := this.createHash(credentials.PublicKey)
-	// if err != nil {
-	// 	return errors.Wrap(err, "failed to create hash of public key in SavePeerCredentials method ")
-	// }
-	// stateKey := peerID + string(hashedKey)
 	fmt.Println("peer credentials saved under key:" + peerID)
 
 	savedCredentialBytes, err := this.db.Get(peerID)
@@ -65,18 +55,24 @@ func (this *PeerCredentials) SavePeerCredentials(peerID string, credentials type
 		}
 		return nil
 	}
-	peerCredentials := types.PeerCredentials{}
-	if err := json.Unmarshal(savedCredentialBytes, &peerCredentials); err != nil {
+	if savedCredentialBytes != nil {
 
-		return errors.Wrap(err, "failed to unmarshal credentialBytes")
-	}
-	peerCredentials.SharedSecret = credentials.SharedSecret
-	newPeerCredentialBytes, err := json.Marshal(peerCredentials)
-	if err != nil {
-		return errors.Wrap(err, "failed to to marshal peerCredentials")
-	}
-	if err = this.db.Put(peerID, newPeerCredentialBytes); err != nil {
-		return errors.Wrap(err, "failed to save newPeerCredentialBytes in the database ")
+		peerCredentials := types.PeerCredentials{}
+		if err := json.Unmarshal(savedCredentialBytes, &peerCredentials); err != nil {
+
+			return errors.Wrap(err, "failed to unmarshal credentialBytes")
+		}
+		if credentials.PublicKey != nil {
+			peerCredentials.PublicKey = credentials.PublicKey
+		}
+		peerCredentials.SharedSecret = credentials.SharedSecret
+		newPeerCredentialBytes, err := json.Marshal(peerCredentials)
+		if err != nil {
+			return errors.Wrap(err, "failed to to marshal peerCredentials")
+		}
+		if err = this.db.Put(peerID, newPeerCredentialBytes); err != nil {
+			return errors.Wrap(err, "failed to save newPeerCredentialBytes in the database ")
+		}
 	}
 
 	return nil

@@ -45,6 +45,9 @@ func (this *OnionRepository) SaveCircuitLink(cID []byte, link types.CircuitLinkP
 	if e := json.Unmarshal(savedLinkBytes, &savedLink); e != nil {
 		return errors.Wrap(e, "failed to unmarshal saved bytes in SaveCircuitLink")
 	}
+	if link.SharedSecret != nil {
+		savedLink.SharedSecret = link.SharedSecret
+	}
 	savedLink.Previous = link.Previous
 	savedLink.Next = link.Next
 	newSavedLinkBytes, e := json.Marshal(savedLink)

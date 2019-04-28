@@ -287,14 +287,6 @@ func (this *OnionService) createShareSecret(coefficients types.DFHCoefficients, 
 	pPublicVar := new(big.Int)
 	pPublicVar.SetBytes(peerPublicVariable.Value)
 	peerSignature := peerPublicVariable.Signature
-	// peerCredentialsBytes, err := this.storage.Get(peerID)
-	// if err != nil {
-	// 	return errors.Wrap(err, "failed to read peers public key")
-	// }
-	// peerCredentials := types.PeerCredentials{}
-	// if err := json.Unmarshal(peerCredentialsBytes, &peerCredentials); err != nil {
-	// 	return errors.Wrap(err, "failed to unmarshal peers credentials from bytes ")
-	// }
 	peerCredentials, err := this.peerCredentialsRepo.GetPeerCredentials(peerID, this.PublicKey)
 	if err != nil {
 		return errors.Wrap(err, "failed to read peer credentials ")
