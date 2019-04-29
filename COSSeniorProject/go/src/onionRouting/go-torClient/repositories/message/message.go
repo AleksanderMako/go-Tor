@@ -18,6 +18,9 @@ func NewMessageRepository() MessageRepository {
 }
 func (this *MessageRepository) CreateMessage(descriptorKey []byte, action string) ([]byte, error) {
 
+	if action == "" {
+		return nil, errors.New("Illegal empty action argument supplied to CreateMessage method ")
+	}
 	message := types.Message{
 		Action:        action,
 		Descriptorkey: descriptorKey,

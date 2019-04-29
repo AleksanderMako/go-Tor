@@ -13,7 +13,7 @@ import (
 
 func NewHttpClient() *http.Client {
 	client := &http.Client{
-		Timeout: time.Second * 120,
+		Timeout: time.Second * 240,
 	}
 	return client
 }

@@ -59,14 +59,15 @@ func (this *ConnectionController) TestMessage(publicKey []byte, data []byte) ([]
 		return nil, errors.Wrap(err, "failed get message in hidden service ")
 	}
 	fmt.Println("hidden service says : ")
-	fmt.Println(decryptedMessage)
+	fmt.Println(string(decryptedMessage.Action))
 	fmt.Println("sending circuit : ")
-	fmt.Println(circuitPayload.Sender)
+	fmt.Println(string(circuitPayload.Sender))
 	hiddenResponse := serviceTypes.HiddenResponse{
 		Data: []byte("successfully contacted hidden service"),
 		ID:   circuitPayload.Sender,
 	}
 
+	fmt.Printf("decrypted data action %v\n", decryptedMessage.Action)
 	var resp []byte
 	switch decryptedMessage.Action {
 
@@ -75,11 +76,27 @@ func (this *ConnectionController) TestMessage(publicKey []byte, data []byte) ([]
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to connect to hidden service ")
 		}
-	case "txt":
+	case "text":
 		resp, err = this.serveTextFile(publicKey, this.workDir, hiddenResponse)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to connect to hidden service ")
+			return nil, errors.Wrap(err, "failed to connect to get file from service ")
 		}
+	case "text file":
+		resp, err = this.serveTextFile(publicKey, this.workDir, hiddenResponse)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to connect to get file from service ")
+		}
+	case "sample text file":
+		resp, err = this.serveTextFile(publicKey, this.workDir, hiddenResponse)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to connect to get file from service ")
+		}
+	case "jpeg":
+		resp, err = this.serveImage(publicKey, this.workDir, hiddenResponse)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to connect to get file from service ")
+		}
+
 	}
 	return resp, nil
 }
@@ -99,6 +116,22 @@ func (this *ConnectionController) connect(publicKey []byte, hiddenResponse servi
 func (this *ConnectionController) serveTextFile(publicKey []byte, workDir string, hiddenResponse serviceTypes.HiddenResponse) ([]byte, error) {
 
 	encryptedData, err := this.contentService.ServerTextFile(publicKey, workDir)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to serve text file ")
+	}
+
+	hiddenResponse.Data = encryptedData
+	respBytes, err := json.Marshal(hiddenResponse)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal hidden response in connection controller ")
+	}
+	return respBytes, nil
+
+}
+
+func (this *ConnectionController) serveImage(publicKey []byte, workDir string, hiddenResponse serviceTypes.HiddenResponse) ([]byte, error) {
+
+	encryptedData, err := this.contentService.ServeImage(publicKey, workDir)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to serve text file ")
 	}

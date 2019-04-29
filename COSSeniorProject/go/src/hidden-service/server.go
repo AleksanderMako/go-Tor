@@ -54,7 +54,8 @@ func main() {
 	}
 
 	http.HandleFunc("/", multiPlexer.Multiplex)
-	httpAddr := flag.String("http", ":"+"5000", "Listen address")
+	port := os.Getenv("SERVICE_PORT")
+	httpAddr := flag.String("http", ":"+port, "Listen address")
 	http.ListenAndServe(*httpAddr, nil)
 }
 func NewHttpClient() *http.Client {

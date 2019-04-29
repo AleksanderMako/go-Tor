@@ -46,10 +46,11 @@ func (this *IntroductionService) PublishServiceDescriptor(publicKey []byte, logg
 	ips = append(ips, ip1)
 	//}
 	// save descriptor in db
+	keyWord := os.Getenv("DATA_TYPE")
 	serviceDescriptor := types.ServiceDescriptor{
 		ID:                 publicKey,
 		IntroductionPoints: ips,
-		KeyWords:           []string{"testing"},
+		KeyWords:           []string{keyWord, keyWord + " file", "sample " + keyWord + " file"},
 	}
 	err = this.descriptor.Save(serviceDescriptor)
 	if err != nil {
@@ -111,7 +112,9 @@ func (this *IntroductionService) BuildIPCircuit(publicKey []byte, privateKey typ
 		return errors.Wrap(err, "failed Generate SymmetricKeys during BuildIPCircuit operation")
 	}
 
-	hiddenServiceController := "hiddenservice:5000"
+	hiddenServiceName := os.Getenv("SERVICEDNS")
+	hiddenServicePort := os.Getenv("SERVICE_PORT")
+	hiddenServiceController := hiddenServiceName + ":" + hiddenServicePort
 	if err = this.onionLibrary.Onionservice.BuildP2PCircuit([]byte(chainID), hiddenServiceController, destination); err != nil {
 		return errors.Wrap(err, "failed to build p2p circuit during BuildIPCircuit operation")
 	}

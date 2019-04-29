@@ -122,7 +122,7 @@ func (this *TorServer) RequestTextFile(w http.ResponseWriter, r *http.Request) {
 	c := types.Connect{}
 
 	if err := json.Unmarshal(body, &c); err != nil {
-		fmt.Printf("error in reading request for ConnectToServer %v\n", err.Error())
+		fmt.Printf("error in reading request for RequestTextFile %v\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	decodedID, err := base64.StdEncoding.DecodeString(c.DescriptorID)
@@ -131,19 +131,32 @@ func (this *TorServer) RequestTextFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 	}
-	messageBytes, err := this.messageRepo.CreateMessage(decodedID, "txt")
+
+	messageBytes, err := this.messageRepo.CreateMessage(decodedID, c.Keyword)
 	if err != nil {
 		fmt.Println("error while building p2p circuit with peers " + err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	fmt.Printf("constructed message is %v\n", string(messageBytes))
 	hiddenResponse, err := this.torLib.Onionservice.SendMessage([]byte(this.chainId), messageBytes)
 	if err != nil {
 		err = errors.Wrap(err, "failed to connect to server ")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	var fileEtension string
+	var data string
+	if c.Keyword == "text" {
+		fileEtension = "txt"
+		data = string(hiddenResponse)
+	} else {
+		fileEtension = "jpg"
+		b64Blob := base64.StdEncoding.EncodeToString(hiddenResponse)
+		data = b64Blob
+	}
+
 	file := types.FileResponse{
-		Data:     string(hiddenResponse),
-		FileType: "txt",
+		Data:     data,
+		FileType: fileEtension,
 	}
 	fileBytes, err := json.Marshal(file)
 	if err != nil {

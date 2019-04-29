@@ -105,6 +105,7 @@ async function getServiceDescriptor(descriptorList, keyWord) {
         const serviceDescriptor = {
             id: descriptor,
             ips: setItem.redisData,
+            keyWords: [keyWord],
         }
         return serviceDescriptor;
     });
