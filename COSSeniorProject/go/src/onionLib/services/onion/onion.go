@@ -313,11 +313,11 @@ func (this *OnionService) BuildP2PCircuit(cID []byte, source string, destination
 	if err != nil {
 		return err
 	}
-	//client := "torclient:8000"
+	
 
 	connectionNodes := []string{source}
 	connectionNodes = append(connectionNodes, circuit.PeerList[0:]...)
-	//	connectionNodes = append(connectionNodes, destination)
+	
 	var next string
 	for i := 1; i < len(connectionNodes); i++ {
 		if i+1 >= (len(connectionNodes)) {
@@ -368,7 +368,7 @@ func (this *OnionService) sendP2PRequest(cID []byte, hop types.P2PBuildCircuitRe
 	return nil
 }
 
-//TODO: modify datatype later
+
 func (this *OnionService) SendMessage(cID []byte, data []byte) ([]byte, error) {
 
 	circuit, err := this.cr.Get(string(cID))
